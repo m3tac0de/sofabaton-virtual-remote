@@ -1,3 +1,5 @@
+![HEADER](screenshots/virtualremote-header.png)
+
 # Sofabaton Virtual Remote for Home Assistant
 
 [![HACS Badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
