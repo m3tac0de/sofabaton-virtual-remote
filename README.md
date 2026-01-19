@@ -20,7 +20,7 @@ Also: you need to bring a really recent version of Home Assistant.
 * **Works with all Sofabaton hubs**: Compatible with the Sofabaton X1, X1S, and X2 hubs.
 * **Theming friendly**: The virtual remote plays nice with your dashboard's theme, or override it for different one.
 * **Custom Layouts**: Show only the button groups you need (D-pad, Volume, etc.).
-* **Macros & Favorites**: Your macros and favorites are right there in the virtual remote.
+* **Macros & Favorites**: Your macros and favorites are right there, in the virtual remote.
 * **Responsive Design**: Adjustable card width and background customization to fit any dashboard.
 * **Configure via the UI**: No need for YAML.
 
@@ -36,7 +36,8 @@ Also: you need to bring a really recent version of Home Assistant.
 ## 🛠 Configuration
 The card is best configured using the Visual Editor. Just add a new card to your dashboard and search for "Sofabaton Virtual Remote."
 
-Once in the card configuration panel, select your remote/hub from the dropdown.
+Once in the card configuration panel, select your remote/hub from the dropdown. The dropdown will only contain remote entities that are compatible with the card, so you can't go wrong here.
+After that, just play around with the settings, this isn't rocket science.
 
 If you prefer YAML, here is the full list of options:
 
