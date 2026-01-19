@@ -95,3 +95,5 @@ custom_favorites:
    - **Type:** `JavaScript Module`
 
 ---
+## License
+MIT © 2025 m3tac0de.
