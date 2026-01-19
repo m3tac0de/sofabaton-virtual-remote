@@ -8,7 +8,7 @@ A highly customizable virtual remote for your lovelace dashboard. It works with 
 ## ⚠️ Before installing
 
 This card does not work standalone, it is a frontend component only. It is dependent on an integration that communicates with the hub, via Home Assistant's backend.
-You will need to have this integration installed and working, before you can use this card.
+You will need to have that integration installed and working, before you can use this card.
 
   - If you have an **X1 or X1S** remote, install and configure the [`Sofabaton X1S integration`](https://github.com/m3tac0de/home-assistant-sofabaton-x1s).
   - If you have an **X2** remote, install and configure the [`Sofabaton Hub integration`](https://github.com/yomonpet/ha-sofabaton-hub).
