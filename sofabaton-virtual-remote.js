@@ -2198,6 +2198,6 @@ if (!window.customCards.some((c) => c.type === TYPE)) {
   window.customCards.push({
     type: TYPE,
     name: "Sofabaton Virtual Remote",
-    description: "A configurable remote for the unofficial Sofabaton X1, X1S and X2 integration.",
+    description: "A configurable remote for the Sofabaton X1, X1S and X2 integrations.",
   });
 }
