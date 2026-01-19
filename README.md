@@ -7,12 +7,13 @@ A highly customizable virtual remote for your lovelace dashboard. It works with 
 
 ## ⚠️ Before installing
 
-This card does not work standalone, it is a frontend component only. It is dependent on an integration that actually communicates with the hub, via Home Assistant's backend.
+This card does not work standalone, it is a frontend component only. It is dependent on an integration that communicates with the hub, via Home Assistant's backend.
 You will need to have this integration installed and working, before you can use this card.
 
   - If you have an **X1 or X1S** remote, install and configure the [`Sofabaton X1S integration`](https://github.com/m3tac0de/home-assistant-sofabaton-x1s).
   - If you have an **X2** remote, install and configure the [`Sofabaton Hub integration`](https://github.com/yomonpet/ha-sofabaton-hub).
 
+Also: you need to bring a really recent version of Home Assistant.
 
 ## ✨ Features
 * **It's your remote, in Home Assistant**: Control activities, navigation, volume, and media playback.
@@ -33,24 +34,48 @@ You will need to have this integration installed and working, before you can use
 ---
 
 ## 🛠 Configuration
-The card features a robust visual editor, allowing you to customize your remote experience without touching YAML.
+The card is best configured using the Visual Editor. Just add a new card to your dashboard and search for "Sofabaton Virtual Remote."
 
-### Styling Options
-* **Apply a Theme**: Quickly switch between visual styles like Light, Dark, or Glass.
-* **Maximum Card Width**: Fine-tune the size of your remote card in pixels (e.g., 360px).
-* **Customize Background**: Enable custom background colors to perfectly match your Home Assistant dashboard.
+Once in the card configuration panel, select your remote/hub from the dropdown.
 
-### Button Visibility
-Tailor the remote to your specific needs by toggling the following sections:
-* **Activity Selector**: Quickly switch between your configured hub activities.
-* **Direction Pad**: Show or hide the main navigation cluster.
-* **Back/Home/Menu Keys**: Toggle the essential navigation row.
-* **Volume/Channel Rockers**: Dedicated controls for audio and channel surfing.
-* **Media Playback**: Play, pause, and skip controls.
-* **Red/Green/Yellow/Blue**: Classic colored buttons for specific device functions.
-* **A/B/C Buttons (X2 only)**: Specialized support for the additional hardware buttons on the X2 remote.
-* **Macros/Favorites**: Access your most-used commands and channels.
+If you prefer YAML, here is the full list of options:
 
+| Key | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `entity` | string | **Required** | The `remote.` entity of your Sofabaton. |
+| `max_width` | number | `360` | Limits how wide the remote grows. |
+| `show_activity` | boolean | `true` | Show/hide the activity selector. |
+| `show_dpad` | boolean | `true` | Show/hide the directional pad. |
+| `show_nav` | boolean | `true` | Show/hide Volume and Channel controls. |
+| `show_mid` | boolean | `true` | Show/hide Home, Menu, and Back buttons. |
+| `show_media` | boolean | `true` | Show/hide Play, Pause, Rew, Fwd. |
+| `show_colors` | boolean | `true` | Show/hide Red, Green, Yellow, Blue buttons. |
+| `show_abc` | boolean | `true` | Show/hide the X2 A/B/C buttons. |
+| `show_macros_button`| boolean | `true` | Toggle the Macros drawer button. |
+| `show_favorites_button`| boolean | `true` | Toggle the Favorites drawer button. |
+| `custom_favorites` | list | `[]` | List of custom buttons for the drawer. |
+| `theme` |	string | 	`""` | Set a specific theme for this card. |
+| `background_override` | list/object | `null` | Override the card background (e.g., [33, 33, 33]). | 
+
+### Custom Favorites Example
+You can add buttons to the favorites drawer that trigger specific hub commands or standard Home Assistant actions.
+Note that these buttons will only exist on your virtual remote, unfortunately not on your real one.
+Also, you can only configure these with YAML, sorry.
+
+```YAML
+custom_favorites:
+  - name: "Netflix"
+    icon: "mdi:netflix"
+    command_id: 148
+    device_id: 3
+  - name: "Lights Off"
+    icon: "mdi:lightbulb-off"
+    tap_action:
+      action: call-service
+      service: light.turn_off
+      target:
+        entity_id: light.living_room
+```
 ---
 
 ## 🚀 Installation
