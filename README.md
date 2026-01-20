@@ -41,7 +41,14 @@ The card is best configured using the Visual Editor. Just add a new card to your
 Once in the card configuration panel, select your remote/hub from the dropdown. The dropdown will only contain remote entities that are compatible with the card, so you can't go wrong here.
 After that, just play around with the settings, this isn't rocket science.
 
-If you prefer YAML, here is the full list of options:
+If you prefer YAML, this is the minimal implementation:
+
+```yaml
+type: custom:sofabaton-virtual-remote
+entity: remote.<hub>_remote
+```
+
+Here is the full list of options:
 
 | Key | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
