@@ -15,8 +15,6 @@ You will need to have that integration installed and working, before you can use
   - If you have an **X1 or X1S** remote, install and configure the [`Sofabaton X1S integration`](https://github.com/m3tac0de/home-assistant-sofabaton-x1s).
   - If you have an **X2** remote, install and configure the [`Sofabaton Hub integration`](https://github.com/yomonpet/ha-sofabaton-hub).
 
-Also: you need to bring a really recent version of Home Assistant.
-
 ## ✨ Features
 * **It's your remote, in Home Assistant**: Control activities, navigation, volume, and media playback.
 * **Works with all Sofabaton hubs**: Compatible with the Sofabaton X1, X1S, and X2 hubs.
@@ -52,7 +50,7 @@ Here is the full list of options:
 
 | Key | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
-| `entity` | string | **Required** | The `remote.` entity of your Sofabaton. |
+| `entity` | string | **Required** | The `remote.` entity of your Sofabaton device. |
 | `max_width` | number | `360` | Limits how wide the remote grows. |
 | `show_activity` | boolean | `true` | Show/hide the activity selector. |
 | `show_dpad` | boolean | `true` | Show/hide the directional pad. |
@@ -70,14 +68,14 @@ Here is the full list of options:
 ### Custom Favorites Example
 You can add buttons to the favorites drawer that trigger specific hub commands or standard Home Assistant actions.
 Note that these buttons will only exist on your virtual remote, unfortunately not on your real one.
-Also, you can only configure these with YAML, sorry.
+Also, you can only configure these with YAML.
 
 ```YAML
 custom_favorites:
   - name: "Netflix"
     icon: "mdi:netflix"
-    command_id: 148
-    device_id: 3
+    command_id: 148                      # Or use key_id, either works
+    device_id: 3                         # Or use activity_id, either works
   - name: "Lights Off"
     icon: "mdi:lightbulb-off"
     tap_action:
