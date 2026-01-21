@@ -7,6 +7,13 @@
 
 A highly customizable virtual remote for your lovelace dashboard. It works with the **Sofabaton X1, X1S, and X2** remotes.
 
+## ⚠️ Before installing
+**This card does not work standalone**, it is a frontend component only. It is dependent on an `integration` that communicates with the hub, via Home Assistant's backend.
+You will need to have that integration installed and working, before you can use this card.
+
+  - If you have an **X1 or X1S** remote, install and configure the [`Sofabaton X1S integration`](https://github.com/m3tac0de/home-assistant-sofabaton-x1s).
+  - If you have an **X2** remote, install and configure the [`Sofabaton Hub integration`](https://github.com/yomonpet/ha-sofabaton-hub).
+
 ## ✨ Features
 * **It's your remote, in Home Assistant**: A replication of how you've set up your physical remote, including macros and favorites.
 * **Works with all Sofabaton hubs**: Compatible with the Sofabaton X1, X1S, and X2 hubs.
@@ -23,12 +30,6 @@ A highly customizable virtual remote for your lovelace dashboard. It works with 
 ---
 
 ## 🚀 Installation
-
-⚠️ **This card does not work standalone**, it is a frontend component only. It is dependent on an `integration` that communicates with the hub, via Home Assistant's backend.
-You will need to have that integration installed and working, before you can use this card.
-
-  - If you have an **X1 or X1S** remote, install and configure the [`Sofabaton X1S integration`](https://github.com/m3tac0de/home-assistant-sofabaton-x1s).
-  - If you have an **X2** remote, install and configure the [`Sofabaton Hub integration`](https://github.com/yomonpet/ha-sofabaton-hub).
 
 ### Via HACS (Recommended)
 1. Open **HACS** in Home Assistant.
