@@ -24,8 +24,7 @@ You will need to have that integration installed and working, before you can use
 * **Configure via the UI**: No need for YAML*. (*except for custom favorites)
 
 ## 📸 Screenshots
-
-<img src="screenshots/virtual-remote-01.png" width="220"> <img src="screenshots/virtual-remote-02.png" width="220"> <img src="screenshots/virtual-remote-03.png" width="220">
+<img src="https://raw.githubusercontent.com/m3tac0de/sofabaton-virtual-remote/refs/heads/main/screenshots/virtual-remote-01.png" width="220"> <img src="https://raw.githubusercontent.com/m3tac0de/sofabaton-virtual-remote/refs/heads/main/screenshots/virtual-remote-02.png" width="220"> <img src="https://raw.githubusercontent.com/m3tac0de/sofabaton-virtual-remote/refs/heads/main/screenshots/virtual-remote-03.png" width="220">
 
 ---
 
