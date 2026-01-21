@@ -14,8 +14,6 @@ You will need to have that integration installed and working, before you can use
   - If you have an **X1 or X1S** remote, install and configure the Sofabaton X1S integration via [`HACS`](https://my.home-assistant.io/redirect/hacs_repository/?owner=m3tac0de&repository=home-assistant-sofabaton-x1s&category=integration) or [`Github`](https://github.com/m3tac0de/home-assistant-sofabaton-x1s).
   - If you have an **X2** remote, install and configure the Sofabaton Hub integration via [`HACS`](https://my.home-assistant.io/redirect/hacs_repository/?owner=yomonpet&repository=ha-sofabaton-hub&category=integration) or [`Github`](https://github.com/yomonpet/ha-sofabaton-hub).
 
-https://my.home-assistant.io/redirect/hacs_repository/?owner=m3tac0de&repository=home-assistant-sofabaton-x1s&category=integration
-
 ## ✨ Features
 * **It's your remote, in Home Assistant**: A replication of how you've set up your physical remote, including macros and favorites.
 * **Works with all Sofabaton hubs**: Compatible with the Sofabaton X1, X1S, and X2 hubs.
