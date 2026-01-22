@@ -15,7 +15,7 @@ You will need to have that integration installed and working, before you can use
   - If you have an **X2** remote, install and configure the **Sofabaton Hub** integration via [`HACS`](https://my.home-assistant.io/redirect/hacs_repository/?owner=yomonpet&repository=ha-sofabaton-hub&category=integration) or [`Github`](https://github.com/yomonpet/ha-sofabaton-hub).
 
 ## ✨ Features
-* **It's your remote, in Home Assistant**: A replication of how you've set up your physical remote, including macros and favorites.
+* **It's your remote, in Home Assistant**: Mirrors how you've set up your physical remote, including macros and favorites.
 * **Works with all Sofabaton hubs**: Compatible with the Sofabaton X1, X1S, and X2 hubs.
 * **Theming friendly**: The virtual remote plays nice with your dashboard's theme, or override it for different one.
 * **Custom Layouts**: Show only the button groups you need (D-pad, Volume, etc.), and change their order too.
