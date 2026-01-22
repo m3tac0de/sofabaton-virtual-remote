@@ -2,7 +2,7 @@
 
 # Sofabaton Virtual Remote for Home Assistant
 
-[![HACS Badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
+[![HACS Badge](https://img.shields.io/badge/HACS-Default-green.svg)](https://github.com/hacs/integration)
 ![Version](https://img.shields.io/badge/version-0.0.6-blue)
 
 A highly customizable virtual remote for your lovelace dashboard. It works with the **Sofabaton X1, X1S, and X2** remotes.
@@ -32,9 +32,7 @@ You will need to have that integration installed and working, before you can use
 
 ### Via HACS (Recommended)
 1. Open **HACS** in Home Assistant.
-2. Click the three dots in the top right and select **Custom repositories**.
-3. Add `https://github.com/m3tac0de/sofabaton-virtual-remote` with the type **Dashboard**.
-4. Search for "Sofabaton Virtual Remote" and click **Download**.
+2. Search for "Sofabaton Virtual Remote" and click **Download**.
 
 ### Manual Installation
 1. Download the `sofabaton-virtual-remote.js` from the [latest release](https://github.com/m3tac0de/sofabaton-virtual-remote/releases).
