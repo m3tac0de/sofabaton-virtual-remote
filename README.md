@@ -99,4 +99,4 @@ custom_favorites:
 
 ---
 ## License
-MIT © 2025 m3tac0de.
+MIT © 2026 m3tac0de.
