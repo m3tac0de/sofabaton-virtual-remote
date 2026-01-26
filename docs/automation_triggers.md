@@ -73,8 +73,6 @@ There’s one important edge case:
 
 That means you may end up with **stale / “ghost” triggers** that still show up as options in the UI, even though they no longer exist on the remote.
 
-This is a limitation of what a card like this can really do. This would be a good thing for the firmware to handle.
-
 ## How to remove ghost triggers (recommended cleanup)
 
 If you want to fully clean out stale triggers:
@@ -85,3 +83,5 @@ If you want to fully clean out stale triggers:
 4. Go back to your Virtual Remote Card and click the **Create** button again.
 
 After that, Home Assistant will rediscover only the current, valid buttons.
+
+Ultimately, creating and then maintaining these triggers would be an excellent firmware feature. Only the hub can do this properly and fully automatically.
