@@ -22,7 +22,7 @@ When **Automation Assist** is enabled:
 3. That keypress contains a **device_id**.
 4. Using that device_id, the card looks up **all commands for that same device** (this lookup is invisible to you).
 5. The card then offers a button to **Create MQTT Discovery Triggers** for that device.
-6. When clicked, a new MQTT topic is created under **homeassistant/device_automation** for each command. By merely creating these, we've added these triggers to Home Assistant.
+6. When clicked, a new MQTT topic is created for each command, and retained under **homeassistant/device_automation** in your broker. By merely creating these, we've added these triggers to Home Assistant.
 
 ### Important: the triggers work without the card
 
