@@ -86,7 +86,7 @@ It has 2 features:
 1. **Button capture → copy/paste code (X1 / X1S / X2)**
    
    When enabled, the card captures button presses on your virtual remote and sends a Notification, available in your Home Assistant sidebar, containing YAML to reproduce that button press in:
-    * your dashboard YAML (a Lovelace button that triggers the same command)
+    * your dashboard (a Lovelace button that triggers the same command)
     * a script / automation action (a ready-to-use service call)
   
 2. **MQTT device triggers helper (X2 only)**
