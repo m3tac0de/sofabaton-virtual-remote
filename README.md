@@ -89,7 +89,7 @@ It has 2 features:
     * your dashboard (a Lovelace button that triggers the same command)
     * a script / automation action (a ready-to-use service call)
   
-2. **MQTT device triggers helper (X2 only)**
+2. **MQTT device triggers (X2 only)**
    
    This feature creates descriptive Home Assistant triggers for MQTT commands — without having to copy/paste MQTT topics and JSON payloads by hand.
 
