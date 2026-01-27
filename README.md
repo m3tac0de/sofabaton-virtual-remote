@@ -22,6 +22,7 @@ You will need to have that integration installed and working, before you can use
 * **Custom Favorites**: For the virtual remote only: make your own favorites that send any command or call any Home Assistant action.
 * **Responsive Design**: The card scales to however much space it has. Tweak its behavior by setting a maximum width.
 * **Configure via the UI**: No need for YAML*. (*except for custom favorites)
+* **Automation Assist**: A feature designed for making life a little bit easier when you're making your own buttons and automations.
 
 ## 📸 Screenshots
 <img src="https://raw.githubusercontent.com/m3tac0de/sofabaton-virtual-remote/refs/heads/main/screenshots/virtual-remote-01.png" width="220"> <img src="https://raw.githubusercontent.com/m3tac0de/sofabaton-virtual-remote/refs/heads/main/screenshots/virtual-remote-02.png" width="220"> <img src="https://raw.githubusercontent.com/m3tac0de/sofabaton-virtual-remote/refs/heads/main/screenshots/virtual-remote-03.png" width="220">
@@ -62,6 +63,8 @@ Here is the full list of options:
 | :--- | :--- | :--- | :--- |
 | `entity` | string | The `remote.` entity of your Sofabaton device. | **Required** |
 | `max_width` | number | Limits how wide the remote grows. | `360` |
+| `shrink` | number | Scales down the remote up to 100%. | `0` |
+| `show_automation_assist` | boolean | Show/hide the Automation Assist panel. | `false` |
 | `show_activity` | boolean | Show/hide the activity selector. | `true` |
 | `show_dpad` | boolean | Show/hide the directional pad. | `true` |
 | `show_nav` | boolean | Show/hide Volume and Channel controls. | `true` |
@@ -75,6 +78,30 @@ Here is the full list of options:
 | `theme` | string | Set a specific theme for this card. | `""` |
 | `background_override` | list/object | Override the card background (e.g., [33, 33, 33]). | `null` |
 | `group_order` | list | Change the order of the button groups. | `activities, macro_favorites, dpad, nav, mid, media, colors, abc` |
+
+### Automation Assist
+Automation Assist is **disabled by default**, enable it in configuration.
+
+It has 2 features:
+1. **Button capture → copy/paste code (X1 / X1S / X2)**
+   
+   When enabled, the card captures button presses on your virtual remote and sends a Notification, available in your Home Assistant sidebar, containing YAML to reproduce that button press in:
+    * your dashboard YAML (a Lovelace button that triggers the same command)
+    * a script / automation action (a ready-to-use service call)
+  
+2. **MQTT device triggers helper (X2 only)**
+   
+   This feature creates descriptive Home Assistant triggers for MQTT commands — without having to copy/paste MQTT topics and JSON payloads by hand.
+
+   Instead of:
+   * **Topic**: `F19879827938423/up`
+   * **Payload**: `{"device_id":1,"key_id":1}`
+
+   You get:
+   * **Device**: `X2 → [YOUR DEVICE NAME]`
+   * **Trigger**: `Dim the lights`
+
+For more details, see here [`docs/automation_triggers.md`](docs/automation_triggers.md).
 
 ### Custom Favorites Example
 You can add buttons to the favorites drawer that trigger specific hub commands or standard Home Assistant actions.
