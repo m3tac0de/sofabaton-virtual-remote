@@ -1,4 +1,4 @@
-# Automation Assist (MQTT Device Triggers)
+# Automation Assist / MQTT Device Triggers
 
 Automation Assist helps you create **descriptive Home Assistant triggers** for your Sofabaton MQTT remote — without having to copy/paste MQTT topics and JSON payloads by hand.
 
