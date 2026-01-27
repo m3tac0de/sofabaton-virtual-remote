@@ -1,6 +1,7 @@
 const CARD_NAME = "Sofabaton Virtual Remote";
-const CARD_VERSION = "0.0.6";
+const CARD_VERSION = "0.0.7";
 const LOG_ONCE_KEY = `__${CARD_NAME}_logged__`;
+const AUTOMATION_ASSIST_SESSION_KEY = "__sofabatonAutomationAssistSession__";
 const TYPE = "sofabaton-virtual-remote";
 const EDITOR = "sofabaton-virtual-remote-editor";
 const DEFAULT_GROUP_ORDER = [
@@ -49,6 +50,35 @@ const ID = {
 };
 
 const POWERED_OFF_LABELS = new Set(["powered off", "powered_off", "off"]);
+const DEFAULT_KEY_LABELS = {
+  up: "Up",
+  down: "Down",
+  left: "Left",
+  right: "Right",
+  ok: "OK",
+  back: "Back",
+  home: "Home",
+  menu: "Menu",
+  volup: "Vol +",
+  voldn: "Vol -",
+  mute: "Mute",
+  chup: "Ch +",
+  chdn: "Ch -",
+  guide: "Guide",
+  dvr: "DVR",
+  play: "Play",
+  exit: "Exit",
+  rew: "Rewind",
+  pause: "Pause",
+  fwd: "Fast Forward",
+  red: "Red",
+  green: "Green",
+  yellow: "Yellow",
+  blue: "Blue",
+  a: "A",
+  b: "B",
+  c: "C",
+};
 
 function logPillsOnce() {
   if (window[LOG_ONCE_KEY]) return;
@@ -102,11 +132,14 @@ class SofabatonRemoteCard extends HTMLElement {
       show_abc: true,
       theme: "",
       background_override: null,
+      show_automation_assist: false,
       show_macro_favorites: true,
       show_macros_button: null,
       show_favorites_button: null,
       custom_favorites: [],
       max_width: 360,
+      // Shrink the entire card using CSS `zoom` (0 = no shrink, higher = smaller)
+      shrink: 0,
       group_order: DEFAULT_GROUP_ORDER.slice(),
       ...config,
     };
@@ -189,6 +222,30 @@ class SofabatonRemoteCard extends HTMLElement {
     if (typeof this._config?.show_favorites_button === "boolean")
       return this._config.show_favorites_button;
     return Boolean(this._config?.show_macro_favorites);
+  }
+
+  _automationAssistEnabled() {
+    return Boolean(this._config?.show_automation_assist);
+  }
+
+  _normalizeHubMac(value) {
+    if (!value) return null;
+    const normalized = String(value)
+      .replace(/[^a-fA-F0-9]/g, "")
+      .toUpperCase();
+    if (!normalized || normalized.length < 6) return null;
+    return normalized;
+  }
+
+  _automationAssistLabelForKey(key, label) {
+    const trimmed = String(label ?? "").trim();
+    if (trimmed) return trimmed;
+    const fallback = DEFAULT_KEY_LABELS[String(key ?? "").toLowerCase()];
+    if (fallback) return fallback;
+    if (!key) return "Button";
+    return String(key)
+      .replace(/[_-]+/g, " ")
+      .replace(/\b\w/g, (c) => c.toUpperCase());
   }
 
   _customFavorites() {
@@ -394,6 +451,8 @@ class SofabatonRemoteCard extends HTMLElement {
       }
     } finally {
       this._hubQueueBusy = false;
+      this._updateAutomationAssistUI();
+      this._syncAutomationAssistMqtt();
     }
   }
 
@@ -596,6 +655,14 @@ class SofabatonRemoteCard extends HTMLElement {
     return match?.name || "";
   }
 
+  _activityNameForId(activityId) {
+    if (activityId == null) return "";
+    const id = Number(activityId);
+    if (!Number.isFinite(id)) return "";
+    const match = this._activities().find((activity) => activity.id === id);
+    return match?.name || "";
+  }
+
   _isPoweredOffLabel(state) {
     const s = String(state || "")
       .trim()
@@ -629,6 +696,781 @@ class SofabatonRemoteCard extends HTMLElement {
     const isPulse =
       this._commandPulseUntil && Date.now() < this._commandPulseUntil;
     return isActivityLoading || isPulse;
+  }
+
+  _resolveCommandDeviceId(commandId, deviceId = null) {
+    const resolved =
+      deviceId != null
+        ? Number(deviceId)
+        : (this._commandTarget(commandId)?.activity_id ??
+          this._currentActivityId());
+    if (resolved == null || !Number.isFinite(Number(resolved))) return null;
+    return Number(resolved);
+  }
+
+  _recordAutomationAssistClick({
+    label,
+    commandId,
+    deviceId = null,
+    commandType = "assigned",
+    icon = null,
+  }) {
+    if (!this._automationAssistEnabled()) return;
+    if (!this._automationAssistActive) return;
+
+    const command = Number(commandId);
+    if (!Number.isFinite(command)) return;
+
+    const resolvedDevice =
+      commandType === "favorite" || commandType === "macro"
+        ? deviceId != null
+          ? Number(deviceId)
+          : this._currentActivityId()
+        : this._resolveCommandDeviceId(command, deviceId);
+
+    if (resolvedDevice == null || !Number.isFinite(Number(resolvedDevice))) {
+      return;
+    }
+
+    const activityName =
+      this._activityNameForId(resolvedDevice) ||
+      this._currentActivityLabel() ||
+      "Unknown";
+
+    this._automationAssistCapture = {
+      label: String(label ?? "Button"),
+      commandId: command,
+      deviceId: Number(resolvedDevice),
+      commandType,
+      icon: icon ? String(icon) : null,
+      activityName,
+    };
+    this._automationAssistMqttMatch = false;
+    this._automationAssistMqttPayload = null;
+    this._automationAssistMqttDeviceName = null;
+    this._automationAssistMqttCommandName = null;
+    this._automationAssistMqttExisting = false;
+    this._automationAssistMqttDiscoveryCreated = false;
+    this._automationAssistMqttDiscoveryWorking = false;
+    this._automationAssistMqttDiscoveryDeviceId = null;
+    this._automationAssistStatusMessage = null;
+
+    this._updateAutomationAssistUI();
+    this._notifyAutomationAssistCapture();
+  }
+
+  _automationAssistRemoteYaml() {
+    const capture = this._automationAssistCapture;
+    if (!capture || !this._config?.entity) return "";
+
+    const entityId = this._config.entity;
+
+    if (this._isHubIntegration()) {
+      const payloadType =
+        capture.commandType === "macro"
+          ? "send_macro_key"
+          : capture.commandType === "favorite"
+            ? "send_favorite_key"
+            : "send_assigned_key";
+
+      const deviceKey =
+        capture.commandType === "favorite" ? "device_id" : "activity_id";
+
+      return [
+        "action: remote.send_command",
+        "target:",
+        `  entity_id: ${entityId}`,
+        "data:",
+        "  command:",
+        `    - type:${payloadType}`,
+        `    - ${deviceKey}:${capture.deviceId}`,
+        `    - key_id:${capture.commandId}`,
+      ].join("\n");
+    }
+
+    return [
+      "action: remote.send_command",
+      "target:",
+      `  entity_id: ${entityId}`,
+      "data:",
+      `  command: ${capture.commandId}`,
+      `  device: ${capture.deviceId}`,
+    ].join("\n");
+  }
+
+  _automationAssistButtonYaml() {
+    const capture = this._automationAssistCapture;
+    if (!capture || !this._config?.entity) return "";
+
+    const label = capture.label || "Automation Assist";
+    const icon =
+      capture.commandType === "favorite"
+        ? "mdi:star"
+        : capture.commandType === "macro"
+          ? "mdi:cogs"
+          : capture.icon || "mdi:remote";
+
+    const serviceYaml = this._automationAssistRemoteYaml()
+      .split("\n")
+      .map((line) => `  ${line}`)
+      .join("\n");
+
+    return [
+      "type: button",
+      `name: ${label}`,
+      `icon: ${icon}`,
+      "tap_action:",
+      "  action: perform-action",
+      "  perform_" + serviceYaml.substring(2),
+      "hold_action:",
+      "  action: none",
+    ].join("\n");
+  }
+
+  _automationAssistNotificationBody() {
+    const capture = this._automationAssistCapture;
+    if (!capture) return "";
+
+    const activityName =
+      capture.activityName ||
+      this._activityNameForId(capture.deviceId) ||
+      this._currentActivityLabel() ||
+      "Unknown";
+    const buttonYaml = this._automationAssistButtonYaml();
+    const remoteYaml = this._automationAssistRemoteYaml();
+
+    return [
+      "---",
+      "",
+      `**Activity: ${activityName} | Button: ${capture.label}**`,
+      "",
+      "---",
+      "📋 **Lovelace Button Code**",
+      "",
+      "*Copy this to your Dashboard YAML:*",
+      "```yaml",
+      buttonYaml,
+      "```",
+      "⚙️ **Service Call (Automation)**",
+      "",
+      "*Use this in your Scripts or Automations:*",
+      "```yaml",
+      remoteYaml,
+      "```",
+    ].join("\n");
+  }
+
+  _notifyAutomationAssistCapture() {
+    if (!this._automationAssistEnabled()) return;
+    if (!this._hass) return;
+    const body = this._automationAssistNotificationBody();
+    if (!body) return;
+
+    this._hass.callService("persistent_notification", "create", {
+      title: "🛠️ Automation Assist",
+      message: body,
+    });
+  }
+
+  _automationAssistMqttSupported() {
+    return this._isX2();
+  }
+
+  _automationAssistMqttAvailable() {
+    return (
+      this._automationAssistMqttSupported() &&
+      this._automationAssistActive &&
+      Boolean(this._hubMac) &&
+      !this._automationAssistMqttDiscoveryCreated &&
+      !this._automationAssistMqttDiscoveryWorking &&
+      this._automationAssistMqttReady()
+    );
+  }
+
+  _automationAssistMqttReady() {
+    if (!this._isHubIntegration()) return true;
+    const queue = Array.isArray(this._hubQueue) ? this._hubQueue.length : 0;
+    return !this._hubQueueBusy && queue === 0;
+  }
+
+  _ensureHubMac() {
+    if (!this._hass || !this._config?.entity) return;
+    if (this._hubMac || this._hubMacDetecting) return;
+
+    const attrMac = this._normalizeHubMac(
+      this._remoteState()?.attributes?.hub_mac,
+    );
+    if (attrMac) {
+      this._hubMac = attrMac;
+      return;
+    }
+
+    if (this._integrationDomain !== "sofabaton_hub") return;
+    if (!this._hass?.connection?.subscribeMessage) return;
+
+    this._hubMacDetecting = true;
+
+    const topic = "activity/+/list";
+    let timeoutId = null;
+    let unsub = null;
+
+    const finish = () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      if (unsub) {
+        try {
+          unsub();
+        } catch (e) {
+          /* no-op */
+        }
+      }
+      this._hubMacDetecting = false;
+      this._updateAutomationAssistUI();
+      this._syncAutomationAssistMqtt();
+    };
+
+    this._hass.connection
+      .subscribeMessage(
+        (msg) => {
+          const topicMatch = String(msg?.topic || "").match(
+            /^activity\/([^/]+)\/list$/,
+          );
+          const normalized = topicMatch?.[1]
+            ? this._normalizeHubMac(topicMatch[1])
+            : null;
+          if (!normalized) return;
+          this._hubMac = normalized;
+          finish();
+        },
+        { type: "mqtt/subscribe", topic },
+      )
+      .then((unsubscribe) => {
+        unsub = unsubscribe;
+        this._hubRequestBasicData();
+        timeoutId = setTimeout(() => finish(), 4000);
+      })
+      .catch(() => {
+        finish();
+      });
+  }
+
+  _syncAutomationAssistMqtt() {
+    if (!this._automationAssistEnabled()) {
+      this._unsubscribeAutomationAssistMqtt();
+      return;
+    }
+
+    if (!this._automationAssistActive) {
+      this._unsubscribeAutomationAssistMqtt();
+      return;
+    }
+
+    if (!this._automationAssistMqttSupported()) {
+      this._unsubscribeAutomationAssistMqtt();
+      return;
+    }
+
+    if (!this._automationAssistMqttReady()) {
+      return;
+    }
+
+    this._ensureHubMac();
+    const mac = this._hubMac;
+    if (!mac) return;
+
+    const topic = `${mac}/up`;
+    if (this._automationAssistMqttTopic === topic && this._mqttUnsub) return;
+
+    this._unsubscribeAutomationAssistMqtt();
+
+    if (!this._hass?.connection?.subscribeMessage) return;
+
+    this._automationAssistMqttTopic = topic;
+    this._hass.connection
+      .subscribeMessage((msg) => this._handleAutomationAssistMqtt(msg), {
+        type: "mqtt/subscribe",
+        topic,
+      })
+      .then((unsub) => {
+        this._mqttUnsub = unsub;
+      })
+      .catch(() => {
+        this._mqttUnsub = null;
+      });
+  }
+
+  _unsubscribeAutomationAssistMqtt() {
+    if (this._mqttUnsub) {
+      try {
+        this._mqttUnsub();
+      } catch (e) {
+        /* no-op */
+      }
+    }
+    this._mqttUnsub = null;
+    this._automationAssistMqttTopic = null;
+  }
+
+  _parseMqttPayload(payload) {
+    if (payload == null) return null;
+    if (typeof payload === "object") return payload;
+    try {
+      return JSON.parse(String(payload));
+    } catch (e) {
+      return null;
+    }
+  }
+
+  _automationAssistMqttTriggerExists(payload, topic) {
+    return false;
+  }
+
+  _automationAssistSessionState() {
+    if (!window[AUTOMATION_ASSIST_SESSION_KEY]) {
+      window[AUTOMATION_ASSIST_SESSION_KEY] = {
+        hideMqttModal: false,
+        discoveryDeviceIds: new Set(),
+      };
+    }
+    return window[AUTOMATION_ASSIST_SESSION_KEY];
+  }
+
+  _shouldSuppressMqttModal(deviceId) {
+    const session = this._automationAssistSessionState();
+    if (session.hideMqttModal) return true;
+    return session.discoveryDeviceIds.has(deviceId);
+  }
+
+  _openAutomationAssistMqttModal(deviceId) {
+    if (!this._automationAssistMqttModal) return;
+    if (!Number.isFinite(deviceId)) return;
+    if (this._shouldSuppressMqttModal(deviceId)) return;
+    this._automationAssistMqttModalDeviceId = deviceId;
+    this._automationAssistMqttModalOpen = true;
+    this._updateAutomationAssistModalUI();
+  }
+
+  _closeAutomationAssistMqttModal() {
+    if (!this._automationAssistMqttModalOpen) return;
+    this._automationAssistMqttModalOpen = false;
+    this._updateAutomationAssistModalUI();
+  }
+
+  _handleAutomationAssistMqtt(msg) {
+    const payload = this._parseMqttPayload(msg?.payload);
+    if (!payload) return;
+
+    const deviceId = Number(payload.device_id);
+    if (
+      Number.isFinite(deviceId) &&
+      this._automationAssistMqttDiscoveryDeviceId !== deviceId
+    ) {
+      this._automationAssistMqttDiscoveryDeviceId = deviceId;
+      this._automationAssistMqttDiscoveryCreated = false;
+      this._automationAssistMqttDiscoveryWorking = false;
+    }
+
+    this._automationAssistMqttMatch = true;
+    this._automationAssistMqttPayload = payload;
+    this._automationAssistMqttDeviceName = null;
+    this._automationAssistMqttCommandName = null;
+    this._automationAssistMqttExisting =
+      this._automationAssistMqttTriggerExists(
+        payload,
+        this._automationAssistMqttTopic,
+      );
+    this._updateAutomationAssistUI();
+    this._primeAutomationAssistMqttMetadata(payload);
+    this._openAutomationAssistMqttModal(deviceId);
+  }
+
+  async _handleAutomationAssistMqttClick() {
+    if (!this._automationAssistMqttAvailable()) return;
+    const mac = this._hubMac;
+    const payload = this._automationAssistMqttPayload;
+    if (!mac || !payload) return;
+
+    const deviceId = Number(payload.device_id);
+    if (!Number.isFinite(deviceId)) return;
+
+    this._automationAssistMqttDiscoveryWorking = true;
+    this._updateAutomationAssistUI();
+
+    try {
+      const [deviceName, commands] = await Promise.all([
+        this._requestMqttDeviceName(mac, deviceId),
+        this._requestMqttDeviceCommands(mac, deviceId),
+      ]);
+
+      if (!commands || commands.size === 0) {
+        this._setAutomationAssistStatus("No MQTT commands discovered yet");
+        return;
+      }
+
+      const deviceLabel = deviceName || `Device ${deviceId}`;
+      const topic = `${mac}/up`;
+      const macLower = String(mac).toLowerCase();
+      const macUpper = String(mac).toUpperCase();
+      let createdCount = 0;
+
+      for (const [keyId, commandName] of commands.entries()) {
+        const payloadObj = { device_id: deviceId, key_id: Number(keyId) };
+        if (!Number.isFinite(payloadObj.key_id)) continue;
+
+        if (this._automationAssistMqttTriggerExists(payloadObj, topic)) {
+          continue;
+        }
+
+        const displayCommand = commandName || `Command ${payloadObj.key_id}`;
+        const uniqueId = `sofabaton_${macLower}_d${deviceId}_k${payloadObj.key_id}`;
+        this._automationAssistDiscoveryIds =
+          this._automationAssistDiscoveryIds || new Set();
+        if (this._automationAssistDiscoveryIds.has(uniqueId)) continue;
+        const subtype = `X2 ${deviceLabel} ${displayCommand}`;
+        const config = {
+          automation_type: "trigger",
+          type: "button_short_press",
+          subtype,
+          payload: JSON.stringify(payloadObj),
+          topic: `${macUpper}/up`,
+          device: {
+            identifiers: [`sofabaton_x2_remote_${deviceId}`],
+            name: `X2 → ${deviceLabel}`,
+            model: "X2",
+            manufacturer: "Sofabaton",
+          },
+        };
+
+        await this._enqueueMqttPublish(async () => {
+          await this._callService("mqtt", "publish", {
+            topic: `homeassistant/device_automation/${uniqueId}/config`,
+            payload: JSON.stringify(config),
+            retain: true,
+          });
+          this._automationAssistDiscoveryIds.add(uniqueId);
+          await this._sleep(250);
+        });
+        createdCount += 1;
+      }
+
+      this._automationAssistMqttDiscoveryCreated = true;
+      this._automationAssistMqttDiscoveryDeviceId = deviceId;
+
+      const session = this._automationAssistSessionState();
+      session.discoveryDeviceIds.add(deviceId);
+
+      if (createdCount > 0) {
+        this._setAutomationAssistStatus(
+          `Created ${createdCount} MQTT discovery triggers for ${deviceLabel}`,
+        );
+      } else {
+        this._setAutomationAssistStatus(
+          `All MQTT discovery triggers already exist for ${deviceLabel}`,
+        );
+      }
+    } finally {
+      this._automationAssistMqttDiscoveryWorking = false;
+      this._updateAutomationAssistUI();
+    }
+  }
+
+  _primeAutomationAssistMqttMetadata(payload) {
+    const mac = this._hubMac;
+    if (!mac || !payload) return;
+
+    const deviceId = Number(payload.device_id);
+    const keyId = Number(payload.key_id);
+    if (!Number.isFinite(deviceId) || !Number.isFinite(keyId)) return;
+
+    const lookupId = (this._automationAssistMqttLookupId || 0) + 1;
+    this._automationAssistMqttLookupId = lookupId;
+
+    Promise.all([
+      this._requestMqttDeviceName(mac, deviceId),
+      this._requestMqttDeviceCommandName(mac, deviceId, keyId),
+    ]).then(([deviceName, commandName]) => {
+      if (this._automationAssistMqttLookupId !== lookupId) return;
+      if (deviceName) this._automationAssistMqttDeviceName = deviceName;
+      if (commandName) this._automationAssistMqttCommandName = commandName;
+      this._updateAutomationAssistUI();
+    });
+  }
+
+  async _requestMqttDeviceName(mac, deviceId) {
+    if (!this._hass?.connection?.subscribeMessage) return null;
+    if (!Number.isFinite(deviceId)) return null;
+
+    this._mqttDeviceNames = this._mqttDeviceNames || new Map();
+    const cacheKey = `${mac}:${deviceId}`;
+    if (this._mqttDeviceNames.has(cacheKey)) {
+      return this._mqttDeviceNames.get(cacheKey);
+    }
+
+    const topic = `device/${mac}/list`;
+    const requestTopic = `device/${mac}/list_request`;
+    const payload = JSON.stringify({ data: "device_list" });
+
+    return this._enqueueMqttRequest(
+      () =>
+        new Promise((resolve) => {
+          let timeoutId = null;
+          let unsub = null;
+
+          const finish = (name) => {
+            if (timeoutId) clearTimeout(timeoutId);
+            if (unsub) {
+              try {
+                unsub();
+              } catch (e) {
+                /* no-op */
+              }
+            }
+            if (name) {
+              this._mqttDeviceNames.set(cacheKey, name);
+            }
+            resolve(name || null);
+          };
+
+          this._hass.connection
+            .subscribeMessage(
+              (msg) => {
+                const data = this._parseMqttPayload(msg?.payload);
+                const devices = Array.isArray(data?.data) ? data.data : [];
+                const match = devices.find(
+                  (device) => Number(device?.device_id) === deviceId,
+                );
+                finish(match?.device_name ? String(match.device_name) : null);
+              },
+              { type: "mqtt/subscribe", topic },
+            )
+            .then((unsubscribe) => {
+              unsub = unsubscribe;
+              this._callService("mqtt", "publish", {
+                topic: requestTopic,
+                payload,
+              });
+              timeoutId = setTimeout(() => finish(null), 4000);
+            })
+            .catch(() => finish(null));
+        }),
+    );
+  }
+
+  async _requestMqttDeviceCommandName(mac, deviceId, keyId) {
+    if (!Number.isFinite(keyId)) return null;
+    const commands = await this._requestMqttDeviceCommands(mac, deviceId);
+    if (!commands) return null;
+    return commands.get(Number(keyId)) || null;
+  }
+
+  async _requestMqttDeviceCommands(mac, deviceId) {
+    if (!this._hass?.connection?.subscribeMessage) return null;
+    if (!Number.isFinite(deviceId)) return null;
+
+    this._mqttDeviceCommands = this._mqttDeviceCommands || new Map();
+    const cacheKey = `${mac}:${deviceId}`;
+    if (this._mqttDeviceCommands.has(cacheKey)) {
+      return this._mqttDeviceCommands.get(cacheKey);
+    }
+
+    const topic = `device/${mac}/keys_list`;
+    const requestTopic = `device/${mac}/keys_request`;
+    const payload = JSON.stringify({ data: { device_id: deviceId } });
+
+    return this._enqueueMqttRequest(
+      () =>
+        new Promise((resolve) => {
+          let timeoutId = null;
+          let unsub = null;
+
+          const finish = (commands) => {
+            if (timeoutId) clearTimeout(timeoutId);
+            if (unsub) {
+              try {
+                unsub();
+              } catch (e) {
+                /* no-op */
+              }
+            }
+            if (commands) {
+              this._mqttDeviceCommands.set(cacheKey, commands);
+            }
+            resolve(commands || null);
+          };
+
+          this._hass.connection
+            .subscribeMessage(
+              (msg) => {
+                const data = this._parseMqttPayload(msg?.payload);
+                if (Number(data?.device_id) !== deviceId) return;
+                const keys = Array.isArray(data?.data) ? data.data : [];
+                const commands = new Map();
+                keys.forEach((entry) => {
+                  const key = Number(entry?.key_id);
+                  if (!Number.isFinite(key)) return;
+                  const name = entry?.key_name ? String(entry.key_name) : null;
+                  if (name) commands.set(key, name);
+                });
+                finish(commands);
+              },
+              { type: "mqtt/subscribe", topic },
+            )
+            .then((unsubscribe) => {
+              unsub = unsubscribe;
+              this._callService("mqtt", "publish", {
+                topic: requestTopic,
+                payload,
+              });
+              timeoutId = setTimeout(() => finish(null), 4000);
+            })
+            .catch(() => finish(null));
+        }),
+    );
+  }
+
+  _enqueueMqttRequest(task) {
+    this._mqttRequestQueue = this._mqttRequestQueue || Promise.resolve();
+    const run = async () => task();
+    this._mqttRequestQueue = this._mqttRequestQueue.then(run, run);
+    return this._mqttRequestQueue;
+  }
+
+  _enqueueMqttPublish(task) {
+    this._mqttPublishQueue = this._mqttPublishQueue || Promise.resolve();
+    const run = async () => task();
+    this._mqttPublishQueue = this._mqttPublishQueue.then(run, run);
+    return this._mqttPublishQueue;
+  }
+
+  _automationAssistSlug(value) {
+    return (
+      String(value || "")
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "_")
+        .replace(/^_+|_+$/g, "")
+        .replace(/_+/g, "_") || "command"
+    );
+  }
+
+  _setAutomationAssistStatus(text) {
+    this._automationAssistStatusMessage = String(text ?? "");
+    if (!this._automationAssistStatus) return;
+    this._automationAssistStatus.textContent =
+      this._automationAssistStatusMessage;
+  }
+
+  _setAutomationAssistActive(active) {
+    const next = !!active;
+    if (this._automationAssistActive === next) return;
+    this._automationAssistActive = next;
+    if (!next) {
+      this._automationAssistCapture = null;
+      this._automationAssistMqttMatch = false;
+      this._automationAssistMqttPayload = null;
+      this._automationAssistMqttDeviceName = null;
+      this._automationAssistMqttCommandName = null;
+      this._automationAssistMqttExisting = false;
+      this._automationAssistMqttDiscoveryCreated = false;
+      this._automationAssistMqttDiscoveryWorking = false;
+      this._automationAssistMqttDiscoveryDeviceId = null;
+      this._automationAssistStatusMessage = null;
+      this._unsubscribeAutomationAssistMqtt();
+      this._closeAutomationAssistMqttModal();
+    } else {
+      this._automationAssistStatusMessage = null;
+      this._syncAutomationAssistMqtt();
+    }
+    this._updateAutomationAssistUI();
+  }
+
+  _updateAutomationAssistUI() {
+    if (!this._automationAssistLabel || !this._automationAssistStatus) return;
+
+    const capture = this._automationAssistCapture;
+    const isActive = this._automationAssistActive;
+    const hasCapture = !!capture;
+    const mqttSupported = this._automationAssistMqttSupported();
+
+    if (!isActive) {
+      this._automationAssistStatus.textContent = "Tap Start to begin";
+    } else if (this._automationAssistStatusMessage) {
+      this._automationAssistStatus.textContent =
+        this._automationAssistStatusMessage;
+    } else if (hasCapture) {
+      this._automationAssistStatus.textContent = `Captured: ${capture.label}`;
+    } else {
+      this._automationAssistStatus.textContent = "Waiting for keypress";
+    }
+
+    if (this._automationAssistStart) {
+      this._setVisible(this._automationAssistStart, !isActive);
+    }
+
+    this._updateAutomationAssistModalUI();
+  }
+
+  _updateAutomationAssistModalUI() {
+    if (!this._automationAssistMqttModal) return;
+
+    const isActive = this._automationAssistActive;
+    const mqttSupported = this._automationAssistMqttSupported();
+    const modalOpen = Boolean(this._automationAssistMqttModalOpen);
+
+    this._automationAssistMqttModal.classList.toggle("open", modalOpen);
+
+    if (!modalOpen) return;
+
+    if (this._automationAssistMqttModalOptOutInput) {
+      this._automationAssistMqttModalOptOutInput.checked = false;
+    }
+
+    const payload = this._automationAssistMqttPayload;
+    const deviceId = Number(payload?.device_id);
+    const commandId = Number(payload?.key_id);
+    const deviceName =
+      this._automationAssistMqttDeviceName ||
+      (Number.isFinite(deviceId) ? `Device ${deviceId}` : "Unknown device");
+    const commandName =
+      this._automationAssistMqttCommandName ||
+      (Number.isFinite(commandId) ? `Command ${commandId}` : null);
+
+    if (this._automationAssistMqttModalText) {
+      const lines = [`Detected MQTT device: ${deviceName}.`];
+      if (commandName) {
+        lines.push(`Last command: ${commandName}.`);
+      }
+      if (this._automationAssistMqttExisting) {
+        lines.push("Existing MQTT automation triggers were found.");
+      }
+      this._automationAssistMqttModalText.textContent = lines.join(" ");
+    }
+
+    if (this._automationAssistMqttModalStart) {
+      this._setVisible(this._automationAssistMqttModalStart, !isActive);
+    }
+
+    if (this._automationAssistMqttModalCreate) {
+      const showCreate =
+        mqttSupported && isActive;
+      this._setVisible(this._automationAssistMqttModalCreate, showCreate);
+      const discoveryWorking = this._automationAssistMqttDiscoveryWorking;
+      const discoveryReady = this._automationAssistMqttDiscoveryCreated;
+      if (discoveryWorking) {
+        this._automationAssistMqttModalCreate.textContent = "Working...";
+      } else {
+        this._automationAssistMqttModalCreate.textContent = discoveryReady
+          ? "Triggers ready for use"
+          : "Create MQTT Discovery triggers";
+      }
+      this._automationAssistMqttModalCreate.disabled =
+        discoveryWorking ||
+        discoveryReady ||
+        !this._automationAssistMqttAvailable();
+      this._automationAssistMqttModalCreate.classList.toggle(
+        "disabled",
+        this._automationAssistMqttModalCreate.disabled,
+      );
+    }
   }
 
   _updateLoadIndicator() {
@@ -771,11 +1613,7 @@ class SofabatonRemoteCard extends HTMLElement {
     if (!this._hass || !this._config?.entity) return;
 
     // If deviceId isn't provided, fall back to enabled_buttons override (activity_id) or current_activity_id
-    const resolvedDevice =
-      deviceId != null
-        ? Number(deviceId)
-        : (this._commandTarget(commandId)?.activity_id ??
-          this._currentActivityId());
+    const resolvedDevice = this._resolveCommandDeviceId(commandId, deviceId);
 
     // Hub uses a different command payload
     if (this._isHubIntegration()) {
@@ -1120,19 +1958,37 @@ class SofabatonRemoteCard extends HTMLElement {
     if (!this._macroFavoritesRow || !this._mfContainer) return;
 
     // If no drawer is open, keep the last direction during the close animation.
-    // We'll reset back to default after the transition completes.
-    if (!this._activeDrawer) {
+    if (!this._activeDrawer) return;
+
+    const rowRect = this._macroFavoritesRow.getBoundingClientRect();
+    const desired = this._getDrawerDesiredHeight();
+
+    // Prefer staying within the CARD (ha-card) rather than within the viewport.
+    // this._root is the card element created in _render().
+    const cardRect =
+      this._root && typeof this._root.getBoundingClientRect === "function"
+        ? this._root.getBoundingClientRect()
+        : null;
+
+    // Fallback to the old viewport behavior if for some reason we can't measure the card.
+    if (!cardRect) {
+      const spaceBelow = window.innerHeight - rowRect.bottom;
+      const spaceAbove = rowRect.top;
+      const shouldOpenUp = spaceBelow < desired && spaceAbove > spaceBelow;
+      this._drawerDirection = shouldOpenUp ? "up" : "down";
+      this._mfContainer.classList.toggle("drawer-up", shouldOpenUp);
       return;
     }
 
-    const rect = this._macroFavoritesRow.getBoundingClientRect();
-    const desired = this._getDrawerDesiredHeight();
+    const spaceBelowInCard = cardRect.bottom - rowRect.bottom;
+    const spaceAboveInCard = rowRect.top - cardRect.top;
 
-    const spaceBelow = window.innerHeight - rect.bottom;
-    const spaceAbove = rect.top;
+    const overlapDown = Math.max(0, Math.min(desired, spaceBelowInCard));
+    const overlapUp = Math.max(0, Math.min(desired, spaceAboveInCard));
 
-    // Prefer opening upward only when we likely won't fit below and there is more room above.
-    const shouldOpenUp = spaceBelow < desired && spaceAbove > spaceBelow;
+    // Choose the direction that keeps MORE of the drawer inside the card.
+    // Tie-breaker: prefer down (feels more natural, and matches current default).
+    const shouldOpenUp = overlapUp > overlapDown;
 
     this._drawerDirection = shouldOpenUp ? "up" : "down";
     this._mfContainer.classList.toggle("drawer-up", shouldOpenUp);
@@ -1314,6 +2170,13 @@ class SofabatonRemoteCard extends HTMLElement {
 
     this._attachPrimaryAction([wrap, btn], () => {
       if (!wrap.classList.contains("disabled")) {
+        this._recordAutomationAssistClick({
+          label: this._automationAssistLabelForKey(key, label),
+          commandId: cmd,
+          deviceId: this._commandTarget(id)?.activity_id ?? null,
+          commandType: "assigned",
+          icon,
+        });
         this._triggerCommandPulse();
         this._sendCommand(
           cmd,
@@ -1361,6 +2224,13 @@ class SofabatonRemoteCard extends HTMLElement {
 
     this._attachPrimaryAction([wrap, btn], () => {
       if (!wrap.classList.contains("disabled")) {
+        this._recordAutomationAssistClick({
+          label: this._automationAssistLabelForKey(key, key),
+          commandId: cmd,
+          deviceId: this._commandTarget(id)?.activity_id ?? null,
+          commandType: "assigned",
+          icon: null,
+        });
         this._triggerCommandPulse();
         this._sendCommand(
           cmd,
@@ -1464,6 +2334,19 @@ class SofabatonRemoteCard extends HTMLElement {
     // Manually handle tap/click
     this._attachPrimaryAction(card, () => {
       if (!Number.isFinite(command_id) || !Number.isFinite(device_id)) return;
+      const commandType =
+        type === "macros"
+          ? "macro"
+          : type === "favorites"
+            ? "favorite"
+            : "assigned";
+      this._recordAutomationAssistClick({
+        label,
+        commandId: command_id,
+        deviceId: device_id,
+        commandType,
+        icon: item?.icon ?? null,
+      });
       this._triggerCommandPulse();
       this._sendDrawerItem(type, command_id, device_id, item);
     });
@@ -1500,6 +2383,10 @@ class SofabatonRemoteCard extends HTMLElement {
     card.appendChild(inner);
 
     this._attachPrimaryAction(card, () => {
+      if (this._automationAssistActive) {
+        this._setAutomationAssistStatus("Not captured.");
+      }
+
       // If the user configured an arbitrary Lovelace Action, run it
       if (fav?.action) {
         this._runLovelaceAction(fav.action, fav);
@@ -1578,6 +2465,7 @@ class SofabatonRemoteCard extends HTMLElement {
       :host {
         --sb-group-radius: var(--ha-card-border-radius, 18px);
         --remote-max-width: 360px;
+        --remote-zoom: 1;
         --sb-overlay-rgb: var(--rgb-primary-text-color, 0, 0, 0);
 
         display: block;
@@ -1586,6 +2474,7 @@ class SofabatonRemoteCard extends HTMLElement {
       ha-card {
         width: 100%;
         max-width: var(--remote-max-width);
+        zoom: var(--remote-zoom);
         margin-left: auto;
         margin-right: auto;
       }
@@ -1599,6 +2488,78 @@ class SofabatonRemoteCard extends HTMLElement {
         position: relative;
         z-index: 3;
       }
+
+      .automationAssist {
+        display: grid;
+        gap: 4px;
+        padding: 12px;
+        border-radius: var(--sb-group-radius);
+        border: 1px solid rgba(var(--rgb-primary-color), 0.25);
+        background: rgba(var(--rgb-primary-color), 0.08);
+      }
+
+      .automationAssist__header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+      }
+
+      .automationAssist__label {
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      .automationAssist__status {
+        font-size: 12px;
+        opacity: 0.75;
+        min-height: 14px; /* reserves 1 line so height doesn't jump */
+      }
+
+      /* small pill button */
+      .automationAssist__startBtn {
+        border: 1px solid rgba(var(--rgb-primary-color), 0.35);
+        background: rgba(var(--rgb-primary-color), 0.10);
+        color: var(--primary-text-color);
+        border-radius: 999px;
+        padding: 2px 10px;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        line-height: 1;
+      }
+
+      .automationAssist__mqttBtn {
+        border: 1px solid rgba(var(--rgb-primary-color), 0.35);
+        background: rgba(var(--rgb-primary-color), 0.10);
+        color: var(--primary-text-color);
+        border-radius: 999px;
+        margin:10px;
+        padding: 10px 10px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        line-height: 1;
+      }
+
+      .automationAssist__startBtn:hover {
+        background: rgba(var(--rgb-primary-color), 0.16);
+      }
+
+      .automationAssist__startBtn:active {
+        transform: scale(0.98);
+      }
+
+      .automationAssist__startBtn[disabled] {
+        opacity: 0.5;
+        cursor: default;
+      }
+
+      .automationAssist__mqttBtn[disabled] {
+        opacity: 0.5;
+        cursor: default;
+      }
+
 
  	  .loadIndicator {
 	    height: 4px;
@@ -2005,11 +2966,210 @@ class SofabatonRemoteCard extends HTMLElement {
         border-left: 3px solid var(--warning-color, orange);
         padding-left: 10px;
       }
+
+      .sb-modal {
+        position: fixed;
+        inset: 0;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        background: rgba(0, 0, 0, 0.45);
+        z-index: 999;
+      }
+
+      .sb-modal.open {
+        display: flex;
+      }
+
+      .sb-modal__dialog {
+        width: min(420px, 90vw);
+        background: var(--ha-card-background, var(--card-background-color, var(--primary-background-color)));
+        color: var(--primary-text-color);
+        border-radius: 16px;
+        border: 1px solid var(--divider-color);
+        padding: 16px;
+        display: grid;
+        gap: 12px;
+        box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+      }
+
+      .sb-modal__header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+      }
+
+      .sb-modal__title {
+        font-weight: 600;
+        font-size: 15px;
+      }
+
+      .sb-modal__close {
+        border: none;
+        background: transparent;
+        color: inherit;
+        cursor: pointer;
+        font-size: 18px;
+        line-height: 1;
+      }
+
+      .sb-modal__text {
+        font-size: 13px;
+        opacity: 0.85;
+      }
+
+      .sb-modal__optout {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+        opacity: 0.85;
+      }
+
+      .sb-modal__actions {
+        display: grid;
+        gap: 8px;
+      }
+
+      .sb-modal__link {
+        font-size: 12px;
+        color: var(--primary-color, #03a9f4);
+        text-decoration: underline;
+      }
     `;
 
     const wrap = document.createElement("div");
     wrap.className = "wrap";
     this._wrap = wrap;
+
+    this._automationAssistRow = document.createElement("div");
+    this._automationAssistRow.className = "automationAssist";
+
+    const assistLabel = document.createElement("div");
+    assistLabel.className = "automationAssist__label";
+    assistLabel.textContent = "Automation Assist";
+    this._automationAssistLabel = assistLabel;
+
+    const assistStatus = document.createElement("div");
+    assistStatus.className = "automationAssist__status";
+    this._automationAssistStatus = assistStatus;
+
+    const mkAssistButton = (label, onClick) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "automationAssist__startBtn";
+      btn.textContent = label || "Start";
+      this._attachPrimaryAction(btn, onClick);
+      return btn;
+    };
+
+    this._automationAssistStart = mkAssistButton("Start", () =>
+      this._setAutomationAssistActive(true),
+    );
+
+    const assistHeader = document.createElement("div");
+    assistHeader.className = "automationAssist__header";
+    assistHeader.appendChild(assistLabel);
+    assistHeader.appendChild(this._automationAssistStart);
+
+    this._automationAssistRow.appendChild(assistHeader);
+    this._automationAssistRow.appendChild(assistStatus);
+
+    this._wrap.appendChild(this._automationAssistRow);
+
+    this._automationAssistMqttModal = document.createElement("div");
+    this._automationAssistMqttModal.className = "sb-modal";
+    this._automationAssistMqttModal.setAttribute("role", "dialog");
+    this._automationAssistMqttModal.setAttribute("aria-modal", "true");
+
+    this._automationAssistMqttModal.addEventListener("click", (ev) => {
+      if (ev.target === this._automationAssistMqttModal) {
+        this._closeAutomationAssistMqttModal();
+      }
+    });
+
+    const modalDialog = document.createElement("div");
+    modalDialog.className = "sb-modal__dialog";
+
+    const modalHeader = document.createElement("div");
+    modalHeader.className = "sb-modal__header";
+
+    const modalTitle = document.createElement("div");
+    modalTitle.className = "sb-modal__title";
+    modalTitle.textContent = "Home Assistant device detected.";
+
+    const modalClose = document.createElement("button");
+    modalClose.type = "button";
+    modalClose.className = "sb-modal__close";
+    modalClose.setAttribute("aria-label", "Close");
+    modalClose.textContent = "✕";
+    modalClose.addEventListener("click", () =>
+      this._closeAutomationAssistMqttModal(),
+    );
+
+    modalHeader.appendChild(modalTitle);
+    modalHeader.appendChild(modalClose);
+
+    const modalBody = document.createElement("div");
+    modalBody.className = "sb-modal__body";
+
+    const modalText = document.createElement("div");
+    modalText.className = "sb-modal__text";
+    this._automationAssistMqttModalText = modalText;
+
+    modalBody.appendChild(modalText);
+
+    const modalActions = document.createElement("div");
+    modalActions.className = "sb-modal__actions";
+
+    const modalDocsLink = document.createElement("a");
+    modalDocsLink.className = "sb-modal__link";
+    modalDocsLink.href = `https://github.com/m3tac0de/sofabaton-virtual-remote/blob/${CARD_VERSION}/docs/automation_triggers.md`;
+    modalDocsLink.target = "_blank";
+    modalDocsLink.rel = "noopener noreferrer";
+    modalDocsLink.textContent = "See documentation for this feature.";
+
+    this._automationAssistMqttModalCreate = mkAssistButton(
+      "Create MQTT Discovery triggers",
+      () => this._handleAutomationAssistMqttClick(),
+    );
+    this._automationAssistMqttModalCreate.classList.add(
+      "automationAssist__mqttBtn",
+    );
+    this._automationAssistMqttModalStart = mkAssistButton(
+      "Start capturing commands",
+      () => this._setAutomationAssistActive(true),
+    );
+
+    const modalOptOut = document.createElement("label");
+    modalOptOut.className = "sb-modal__optout";
+    const modalOptOutInput = document.createElement("input");
+    modalOptOutInput.type = "checkbox";
+    this._automationAssistMqttModalOptOutInput = modalOptOutInput;
+    modalOptOutInput.addEventListener("change", () => {
+      if (modalOptOutInput.checked) {
+        const session = this._automationAssistSessionState();
+        session.hideMqttModal = true;
+        this._closeAutomationAssistMqttModal();
+      }
+    });
+    const modalOptOutText = document.createElement("span");
+    modalOptOutText.textContent =
+      "Not show this again for this device (in this session).";
+    modalOptOut.appendChild(modalOptOutInput);
+    modalOptOut.appendChild(modalOptOutText);
+
+    modalActions.appendChild(modalDocsLink);
+    modalActions.appendChild(this._automationAssistMqttModalCreate);
+    modalActions.appendChild(modalOptOut);
+    modalActions.appendChild(this._automationAssistMqttModalStart);
+
+    modalDialog.appendChild(modalHeader);
+    modalDialog.appendChild(modalBody);
+    modalDialog.appendChild(modalActions);
+    this._automationAssistMqttModal.appendChild(modalDialog);
+    card.appendChild(this._automationAssistMqttModal);
 
     // Activity selector (full width)
     this._activityRow = document.createElement("div");
@@ -2423,6 +3583,8 @@ class SofabatonRemoteCard extends HTMLElement {
     };
     this._applyGroupOrder();
     this._syncLayering();
+    this._updateAutomationAssistUI();
+    this._syncAutomationAssistMqtt();
 
     card.appendChild(style);
     card.appendChild(wrap);
@@ -2445,6 +3607,23 @@ class SofabatonRemoteCard extends HTMLElement {
       this.style.setProperty("--remote-max-width", `${mw}px`);
     } else if (typeof mw === "string" && mw.trim()) {
       this.style.setProperty("--remote-max-width", mw.trim());
+    }
+
+    // Apply per-card shrink (CSS zoom). Only shrink; never allow values > 1.
+    // Config is a percentage where 0 = normal size, higher = smaller.
+    const shrink = this._config?.shrink;
+    const shrinkNum =
+      typeof shrink === "number"
+        ? shrink
+        : typeof shrink === "string"
+          ? Number(shrink)
+          : 0;
+    if (!Number.isFinite(shrinkNum) || shrinkNum <= 0) {
+      this.style.removeProperty("--remote-zoom");
+    } else {
+      // Map 0..100 -> zoom 1..0 (clamped). Keep a small floor to avoid 0.
+      const z = Math.max(0.1, Math.min(1, 1 - shrinkNum / 100));
+      this.style.setProperty("--remote-zoom", String(z));
     }
 
     const remote = this._remoteState();
@@ -2666,6 +3845,14 @@ class SofabatonRemoteCard extends HTMLElement {
     }
 
     // Visibility toggles (user config)
+    this._setVisible(
+      this._automationAssistRow,
+      this._config.show_automation_assist,
+    );
+    if (!this._automationAssistEnabled() && this._automationAssistActive) {
+      this._setAutomationAssistActive(false);
+    }
+    this._syncAutomationAssistMqtt();
     this._setVisible(this._activityRow, this._config.show_activity);
 
     const showMacrosBtn = this._showMacrosButton();
@@ -2811,11 +3998,13 @@ class SofabatonRemoteCard extends HTMLElement {
       show_media: true,
       show_colors: true,
       show_abc: true,
+      show_automation_assist: false,
       show_macro_favorites: true,
       show_macros_button: null,
       show_favorites_button: null,
       custom_favorites: [],
       max_width: 360,
+      shrink: 0,
       group_order: DEFAULT_GROUP_ORDER.slice(),
     };
   }
@@ -2853,11 +4042,13 @@ class SofabatonRemoteCardEditor extends HTMLElement {
           show_media: "Media Playback Controls",
           show_colors: "Red/Green/Yellow/Blue",
           show_abc: "A/B/C Buttons (X2 only)",
+          show_automation_assist: "Automation Assist",
           show_macros_button: "Macros Button",
           show_favorites_button: "Favorites Button",
           custom_favorites: "Custom Favorites (advanced)",
           show_macro_favorites: "Macros/Favorites Buttons (deprecated)",
           max_width: "Maximum Card Width (px)",
+          shrink: "Shrink (higher = smaller)",
           group_order: "Group Order",
         };
         return labels[schema.name] || schema.name;
@@ -2956,10 +4147,21 @@ class SofabatonRemoteCardEditor extends HTMLElement {
             name: "max_width",
             selector: {
               number: {
-                min: 0,
+                min: 230,
                 max: 1200,
-                step: 10,
+                step: 5,
                 unit_of_measurement: "px",
+              },
+            },
+          },
+          {
+            name: "shrink",
+            selector: {
+              number: {
+                min: 0,
+                max: 80,
+                step: 1,
+                unit_of_measurement: "%",
               },
             },
           },
@@ -2994,7 +4196,9 @@ class SofabatonRemoteCardEditor extends HTMLElement {
       background_override: this._config.background_override ?? [255, 255, 255],
       custom_favorites: this._config.custom_favorites ?? [],
       max_width: this._config.max_width ?? 360,
+      shrink: this._config.shrink ?? 0,
       group_order: this._config.group_order ?? DEFAULT_GROUP_ORDER.slice(),
+      show_automation_assist: this._config.show_automation_assist ?? false,
     };
 
     this._renderGroupOrderEditor();
@@ -3114,6 +4318,13 @@ class SofabatonRemoteCardEditor extends HTMLElement {
     this._fireChanged();
   }
 
+  _setAutomationAssistEnabled(enabled) {
+    const next = { ...this._config, show_automation_assist: !!enabled };
+    this._config = next;
+    this._syncFormData(next);
+    this._fireChanged();
+  }
+
   _renderGroupOrderEditor() {
     if (!this._layoutWrap) return;
 
@@ -3163,6 +4374,28 @@ class SofabatonRemoteCardEditor extends HTMLElement {
 
     const card = document.createElement("div");
     card.className = "sb-layout-card";
+
+    const assistRow = document.createElement("div");
+    assistRow.className = "sb-layout-row";
+    const assistLabel = document.createElement("div");
+    assistLabel.className = "sb-layout-label";
+    assistLabel.textContent = "Automation Assist (fixed top row)";
+    const assistActions = document.createElement("div");
+    assistActions.className = "sb-layout-actions";
+    const assistSwitchWrap = document.createElement("div");
+    assistSwitchWrap.className = "sb-switch";
+    const assistSwitch = document.createElement("ha-switch");
+    assistSwitch.checked = !!this._config?.show_automation_assist;
+    assistSwitch.addEventListener("change", (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      this._setAutomationAssistEnabled(!!assistSwitch.checked);
+    });
+    assistSwitchWrap.appendChild(assistSwitch);
+    assistActions.appendChild(assistSwitchWrap);
+    assistRow.appendChild(assistLabel);
+    assistRow.appendChild(assistActions);
+    card.appendChild(assistRow);
 
     order.forEach((key, i) => {
       const row = document.createElement("div");
@@ -3325,6 +4558,7 @@ class SofabatonRemoteCardEditor extends HTMLElement {
       show_media: true,
       show_colors: true,
       show_abc: true,
+      show_automation_assist: false,
       // Macro/Favorites: support both new and legacy flags
       show_macros_button: true,
       show_favorites_button: true,
