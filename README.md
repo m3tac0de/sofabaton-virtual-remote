@@ -22,7 +22,7 @@ You will need to have that integration installed and working, before you can use
 * **Custom Favorites**: For the virtual remote only: make your own favorites that send any command or call any Home Assistant action.
 * **Responsive Design**: The card scales to however much space it has. Tweak its behavior by setting a maximum width.
 * **Configure via the UI**: No need for YAML*. (*except for custom favorites)
-* **Automation Assist**: A feature designed for making life a little bit easier when you're making your own buttons and automations.
+* **Automation Assist**: A feature designed for making your own buttons and automations a little bit easier.
 
 ## 📸 Screenshots
 <img src="https://raw.githubusercontent.com/m3tac0de/sofabaton-virtual-remote/refs/heads/main/screenshots/virtual-remote-01.png" width="220"> <img src="https://raw.githubusercontent.com/m3tac0de/sofabaton-virtual-remote/refs/heads/main/screenshots/virtual-remote-02.png" width="220"> <img src="https://raw.githubusercontent.com/m3tac0de/sofabaton-virtual-remote/refs/heads/main/screenshots/virtual-remote-03.png" width="220">
