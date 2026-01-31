@@ -82,14 +82,16 @@ Here is the full list of options:
 ### Automation Assist
 Automation Assist is **disabled by default**, enable it in configuration.
 
+<img src="https://raw.githubusercontent.com/m3tac0de/sofabaton-virtual-remote/refs/heads/main/screenshots/virtual-remote-04.png" height="300">  <img src="https://raw.githubusercontent.com/m3tac0de/sofabaton-virtual-remote/refs/heads/main/screenshots/virtual-remote-05.png" height="300">  <img src="https://raw.githubusercontent.com/m3tac0de/sofabaton-virtual-remote/refs/heads/main/screenshots/virtual-remote-06.png" height="300"> 
+
 It has 2 features:
 1. **Button capture → copy/paste code (X1 / X1S / X2)**
-   
+
    When enabled, the card captures button presses and Activity changes on your virtual remote and sends a Notification, available in your Home Assistant sidebar, containing YAML to reproduce that button press in:
     * your dashboard (a Lovelace button that triggers the same command)
     * a script / automation action (a ready-to-use service call)
   
-2. **MQTT device triggers (X2 only)**
+1. **MQTT device triggers (X2 only)**
    
    This feature creates descriptive Home Assistant triggers for MQTT commands — without having to copy/paste MQTT topics and JSON payloads by hand.
 
