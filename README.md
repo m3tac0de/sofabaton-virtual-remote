@@ -3,7 +3,7 @@
 # Sofabaton Virtual Remote for Home Assistant
 
 [![HACS Badge](https://img.shields.io/badge/HACS-Default-green.svg)](https://github.com/hacs/integration)
-![Version](https://img.shields.io/badge/version-0.0.7-blue)
+![Version](https://img.shields.io/badge/version-0.0.8-blue)
 
 A highly customizable virtual remote for your lovelace dashboard. It works with the **Sofabaton X1, X1S, and X2** remotes.
 
@@ -85,7 +85,7 @@ Automation Assist is **disabled by default**, enable it in configuration.
 It has 2 features:
 1. **Button capture → copy/paste code (X1 / X1S / X2)**
    
-   When enabled, the card captures button presses on your virtual remote and sends a Notification, available in your Home Assistant sidebar, containing YAML to reproduce that button press in:
+   When enabled, the card captures button presses and Activity changes on your virtual remote and sends a Notification, available in your Home Assistant sidebar, containing YAML to reproduce that button press in:
     * your dashboard (a Lovelace button that triggers the same command)
     * a script / automation action (a ready-to-use service call)
   
