@@ -3,7 +3,7 @@
 # Sofabaton Virtual Remote for Home Assistant
 
 [![HACS Badge](https://img.shields.io/badge/HACS-Default-green.svg)](https://github.com/hacs/integration)
-![Version](https://img.shields.io/badge/version-0.0.8-blue)
+![Version](https://img.shields.io/badge/version-0.0.9-blue)
 
 A highly customizable virtual remote for your lovelace dashboard. It works with the **Sofabaton X1, X1S, and X2** remotes.
 
@@ -67,9 +67,11 @@ Here is the full list of options:
 | `show_automation_assist` | boolean | Show/hide the Automation Assist panel. | `false` |
 | `show_activity` | boolean | Show/hide the activity selector. | `true` |
 | `show_dpad` | boolean | Show/hide the directional pad. | `true` |
-| `show_nav` | boolean | Show/hide Volume and Channel controls. | `true` |
+| `show_volume` | boolean | Show/hide Volume controls. | `true` |
+| `show_channel` | boolean | Show/hide Channel controls. | `true` |
 | `show_mid` | boolean | Show/hide Home, Menu, and Back buttons. | `true` |
-| `show_media` | boolean | Show/hide Play, Pause, Rew, Fwd. | `true` |
+| `show_media` | boolean | Show/hide Play/Pause, Rew, Fwd buttons. | `true` |
+| `show_dvr` | boolean | Show/hide the X2 DVR, Pause, Exit buttons. | `true` |
 | `show_colors` | boolean | Show/hide Red, Green, Yellow, Blue buttons. | `true` |
 | `show_abc` | boolean | Show/hide the X2 A/B/C buttons. | `true` |
 | `show_macros_button`| boolean | Toggle the Macros drawer button. | `true` |
@@ -78,6 +80,25 @@ Here is the full list of options:
 | `theme` | string | Set a specific theme for this card. | `""` |
 | `background_override` | list/object | Override the card background (e.g., [33, 33, 33]). | `null` |
 | `group_order` | list | Change the order of the button groups. | `activities, macro_favorites, dpad, nav, mid, media, colors, abc` |
+| `layouts` | map / object | Set Layout Options per Activity ID. | `{}` |
+
+```yaml
+type: custom:sofabaton-virtual-remote
+entity: remote.x2_hub
+show_colors: false           # color buttons hidden in every Activity
+layouts:
+  "101":
+    show_activity: false     # Activity select hidden in Activity 101
+    group_order:             # Custom group order for Activity 101
+      - activity
+      - dpad
+      - nav
+      - mid
+      - media
+      - colors
+      - abc
+      - macro_favorites
+```
 
 ### Automation Assist
 Automation Assist is **disabled by default**, enable it in configuration.
