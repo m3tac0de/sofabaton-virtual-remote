@@ -114,7 +114,7 @@ It has 2 features:
   
 1. **MQTT device triggers (X2 only)**
    
-   This feature creates descriptive Home Assistant triggers for MQTT commands — without having to copy/paste MQTT topics and JSON payloads by hand.
+   This feature creates descriptive Home Assistant triggers for MQTT commands and Activity changes — without having to copy/paste MQTT topics and JSON payloads by hand.
 
    Instead of:
    * **Topic**: `F19879827938423/up`
