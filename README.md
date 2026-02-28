@@ -19,7 +19,7 @@ You will need to have that integration installed and working, before you can use
 * **Works with all Sofabaton hubs**: Compatible with the Sofabaton X1, X1S, and X2 hubs.
 * **Theming friendly**: The virtual remote plays nice with your dashboard's theme, or override it for a different one.
 * **Custom Layouts**: Show only the button groups you need (D-pad, Volume, etc.), and change their order too.
-* **Custom Favorites**: For the virtual remote only: make your own favorites that send any command or call any Home Assistant action.
+* **Wifi Commands**: Map Actions in Home Assistant directly to physical buttons or favorites on your physical remote, configure entirely via the UI. (`sofabaton_x1s` integration only)
 * **Responsive Design**: The card scales to however much space it has. Tweak its behavior by setting a maximum width.
 * **Configure via the UI**: No need for YAML*. (*except for custom favorites)
 * **Automation Assist**: A feature designed for making your own buttons and automations a little bit easier.
