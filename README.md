@@ -101,18 +101,17 @@ layouts:
 ```
 
 ### Automation Assist
-Automation Assist is **disabled by default**, enable it in configuration.
 
 <img src="https://raw.githubusercontent.com/m3tac0de/sofabaton-virtual-remote/refs/heads/main/screenshots/virtual-remote-04.png" height="300">  <img src="https://raw.githubusercontent.com/m3tac0de/sofabaton-virtual-remote/refs/heads/main/screenshots/virtual-remote-05.png" height="300">  <img src="https://raw.githubusercontent.com/m3tac0de/sofabaton-virtual-remote/refs/heads/main/screenshots/virtual-remote-06.png" height="300"> 
 
-It has 2 features:
-1. **Button capture → copy/paste code (X1 / X1S / X2)**
+It has 3 features to help make your own UIs and Automations:
+1. **Key capture → copy/paste code (X1 / X1S / X2)**
 
    When enabled, the card captures button presses and Activity changes on your virtual remote and sends a Notification, available in your Home Assistant sidebar, containing YAML to reproduce that button press in:
     * your dashboard (a Lovelace button that triggers the same command)
     * a script / automation action (a ready-to-use service call)
   
-1. **MQTT device triggers (X2 only)**
+2. **MQTT device triggers (X2 only)**
    
    This feature creates descriptive Home Assistant triggers for MQTT commands and Activity changes — without having to copy/paste MQTT topics and JSON payloads by hand.
 
@@ -124,7 +123,14 @@ It has 2 features:
    * **Device**: `X2 → [YOUR DEVICE NAME]`
    * **Trigger**: `Dim the lights`
 
-For more details, see here [`docs/automation_triggers.md`](docs/automation_triggers.md).
+   For more details, see here [`docs/automation_triggers.md`](docs/automation_triggers.md).
+
+3. **Wifi Commands (sofabaton_x1s integration only, X1 / X1S / X2)**
+
+   This feature runs Home Assistant Actions when buttons are pressed on the physical remote.
+   Configured entirely through the Home Assistant UI, configuration is automatically synced with the hub.
+
+   For more details, see here [`sofabaton_x1s/docs/wifi_commands.md`](https://github.com/m3tac0de/home-assistant-sofabaton-x1s/blob/main/docs/wifi_commands.md).
 
 ### Custom Favorites Example
 You can add buttons to the favorites drawer that trigger specific hub commands or standard Home Assistant actions.
