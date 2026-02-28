@@ -1,7 +1,10 @@
 # Automation Assist: using Key capture
 
-With Key Capture, button presses and Activity changes in the Virtual Remote are sent as Persistent Notifications to the Home Assistant sidebar, so they can be replayed in custom UIs and automations.
+When enabled, the card captures button presses and Activity changes on your virtual remote and sends a Notification, available in your Home Assistant sidebar, containing YAML to reproduce that button press in:
+  - your dashboard (a Lovelace button that triggers the same command)
+  - a script / automation action (a ready-to-use service call)
 
+    
 ## ℹ️ Capture a button press
 
 ### 1. In the card's configuration editor: **Automation Assist > enable Key capture**
