@@ -111,7 +111,17 @@ layouts:
 <img src="https://raw.githubusercontent.com/m3tac0de/sofabaton-virtual-remote/refs/heads/main/screenshots/virtual-remote-04.png" height="300">  <img src="https://raw.githubusercontent.com/m3tac0de/sofabaton-virtual-remote/refs/heads/main/screenshots/virtual-remote-05.png" height="300">  <img src="https://raw.githubusercontent.com/m3tac0de/sofabaton-virtual-remote/refs/heads/main/screenshots/virtual-remote-06.png" height="300"> 
 
 It has 3 features to help make your own UIs and Automations:
-1. **Key capture → copy/paste code (X1 / X1S / X2)**
+
+*  **Wifi Commands (X1 / X1S / X2)**  
+   ⚠️ Only available with the `sofabaton_x1s` integration.
+
+   **[Physical Button] → [Sofabaton Hub] → [Home Assistant Action]**  
+   This feature runs Home Assistant Actions when buttons are pressed on the physical remote.  
+   Configuration is performed entirely through the Home Assistant UI and then synced to the hub.
+
+   For more details, see here [`sofabaton_x1s/docs/wifi_commands.md`](https://github.com/m3tac0de/home-assistant-sofabaton-x1s/blob/main/docs/wifi_commands.md).  
+
+*  **Key capture → copy/paste code (X1 / X1S / X2)**
 
    When enabled, the card captures button presses and Activity changes on your virtual remote and sends a Notification, available in your Home Assistant sidebar, containing YAML to reproduce that button press in:
     * your dashboard (a Lovelace button that triggers the same command)
@@ -119,7 +129,7 @@ It has 3 features to help make your own UIs and Automations:
 
     For more details, see here [`docs/keycapture.md`](docs/keycapture.md).
   
-2. **MQTT device triggers (X2 only)**
+*  **MQTT device triggers (X2 only)**
    
    This feature creates descriptive Home Assistant triggers for MQTT commands and Activity changes — without having to copy/paste MQTT topics and JSON payloads by hand.
 
@@ -133,14 +143,7 @@ It has 3 features to help make your own UIs and Automations:
 
    For more details, see here [`docs/automation_triggers.md`](docs/automation_triggers.md).
 
-3. **Wifi Commands (X1 / X1S / X2)**  
-   ⚠️ Only available with the `sofabaton_x1s` integration.
 
-   **[Physical Button] → [Sofabaton Hub] → [Home Assistant Action]**  
-   This feature runs Home Assistant Actions when buttons are pressed on the physical remote.  
-   Configuration is performed entirely through the Home Assistant UI and then synced to the hub.
-
-   For more details, see here [`sofabaton_x1s/docs/wifi_commands.md`](https://github.com/m3tac0de/home-assistant-sofabaton-x1s/blob/main/docs/wifi_commands.md).  
    
 
 ### Custom Favorites Example
