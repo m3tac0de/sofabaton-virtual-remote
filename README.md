@@ -138,7 +138,7 @@ It has 3 features to help make your own UIs and Automations:
 
    **[Physical Button] → [Sofabaton Hub] → [Home Assistant Action]**  
    This feature runs Home Assistant Actions when buttons are pressed on the physical remote.  
-   Configuration is performed entirely through the Home Assistant UI synced to the hub.
+   Configuration is performed entirely through the Home Assistant UI and then synced to the hub.
 
    For more details, see here [`sofabaton_x1s/docs/wifi_commands.md`](https://github.com/m3tac0de/home-assistant-sofabaton-x1s/blob/main/docs/wifi_commands.md).  
    
