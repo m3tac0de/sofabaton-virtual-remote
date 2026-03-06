@@ -27,7 +27,7 @@ When enabled, the card captures button presses and Activity changes on your virt
 ### 1. Enable the dashboard's Edit Mode and click Add card
 <img height="300" alt="image" src="https://github.com/user-attachments/assets/cfce05c1-bf80-47aa-848d-41ee8bf8ee3c" />
 
-### 2. In the card selection screen, select Manual
+### 2. In the card selection menu, select Manual
 <img height="200" alt="image" src="https://github.com/user-attachments/assets/c2a06172-7a9c-426e-be90-861eaf900405" />
 
 ### 3. In the card's configuration editor, replace whatever's there with the code copied from the Notification
