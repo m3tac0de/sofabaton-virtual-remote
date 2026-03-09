@@ -1,6 +1,10 @@
-# Automation Assist / MQTT Device Triggers
+# Automation Assist: MQTT Device Triggers
 
 Automation Assist helps you create **descriptive Home Assistant triggers** for your Sofabaton MQTT remote — without having to copy/paste MQTT topics and JSON payloads by hand.
+
+## Where to find it
+
+In the card's configuration editor, under Automation Assist, enable **Key capture**. Now, whenever you click any button that is bound to an MQTT device, that key press is detected by the integration and will open a popup containing the Device Triggers feature.
 
 ## Why this exists
 
