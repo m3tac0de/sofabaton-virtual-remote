@@ -23,11 +23,11 @@ You will need to have that integration installed and working, before you can use
 * **Works with all Sofabaton hubs**: Compatible with the Sofabaton X1, X1S, and X2 hubs.
 * **Theming friendly**: The virtual remote plays nice with your dashboard's theme, or override it for a different one.
 * **Custom Layouts**: Show only the button groups you need (D-pad, Volume, etc.), make layouts per Activity.
-* **Automation Assist**: Designed for making your own buttons and automations a little bit easier.
+* **Automation Assist**: Designed to simplify the creation of your own UIs and automations. Run Actions on button presses and Activity changes. Learn how to send any command to the hub.
   * **Wifi Commands**: Map Actions in Home Assistant directly to physical buttons or favorites on your physical remote, configure entirely via the UI. (`sofabaton_x1s` integration only)
-  * **Key capture**: Record keypresses in the virtual remote and receive them as YAML, to make your own UI or automation.
+  * **Key capture**: Record keypresses in the virtual remote and receive them as YAML, to replay them in your own UI or automation.
 * **Responsive Design**: The card scales to however much space it has. Tweak its behavior by setting a maximum width.
-* **Configure via the UI**: No need for YAML*. (*except for custom favorites)
+* **Configure via the UI**: No need for YAML.
 
 
 ## 📸 Screenshots
@@ -69,7 +69,6 @@ Here is the full list of options:
 | :--- | :--- | :--- | :--- |
 | `entity` | string | The `remote.` entity of your Sofabaton device. | **Required** |
 | `max_width` | number | Limits how wide the remote grows. | `360` |
-| `shrink` | number | Scales down the remote up to 100%. | `0` |
 | `show_automation_assist` | boolean | Show/hide the Automation Assist panel. | `false` |
 | `show_activity` | boolean | Show/hide the activity selector. | `true` |
 | `show_dpad` | boolean | Show/hide the directional pad. | `true` |
@@ -143,27 +142,6 @@ It has 3 features to help make your own UIs and Automations:
 
    For more details, see here [`docs/automation_triggers.md`](docs/automation_triggers.md).
 
-
-   
-
-### Custom Favorites Example
-You can add buttons to the favorites drawer that trigger specific hub commands or standard Home Assistant actions.
-Note that these buttons will only exist on your virtual remote, unfortunately not on your real one.
-Also, you can only configure these with YAML.
-
-```YAML
-custom_favorites:
-  - name: "Netflix"
-    icon: "mdi:netflix"
-    command_id: 148                      # Or use key_id, either works
-    device_id: 3                         # Or use activity_id, either works
-  - name: "Lights Off"
-    icon: "mdi:lightbulb-off"
-    tap_action:
-      action: call-service
-      service: light.turn_off
-      target:
-        entity_id: light.living_room
 ```
 
 
