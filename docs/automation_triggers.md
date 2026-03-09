@@ -4,7 +4,7 @@ Automation Assist helps you create **descriptive Home Assistant triggers** for y
 
 ## Where to find it
 
-In the card's configuration editor, under Automation Assist, enable **Key capture**. Now, whenever you click any button that is bound to an MQTT device, that key press is detected by the integration and will open a popup containing the Device Triggers feature.
+In the card's configuration editor, under **Automation Assist**, enable **Key capture**. Now, whenever you click any button that is bound to an MQTT device, that key press is detected by the integration and will open a popup containing the Device Triggers feature.
 
 ## Why this exists
 
