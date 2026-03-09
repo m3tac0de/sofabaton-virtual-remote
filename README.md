@@ -142,9 +142,6 @@ It has 3 features to help make your own UIs and Automations:
 
    For more details, see here [`docs/automation_triggers.md`](docs/automation_triggers.md).
 
-```
-
-
 ---
 ## License
 MIT © 2026 m3tac0de.
