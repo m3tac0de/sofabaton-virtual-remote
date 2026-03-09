@@ -22,7 +22,7 @@ You will need to have that integration installed and working, before you can use
 * **It's your remote, in Home Assistant**: Mirrors how you've set up your physical remote, including macros and favorites.
 * **Works with all Sofabaton hubs**: Compatible with the Sofabaton X1, X1S, and X2 hubs.
 * **Theming friendly**: The virtual remote plays nice with your dashboard's theme, or override it for a different one.
-* **Custom Layouts**: Show only the button groups you need (D-pad, Volume, etc.), and change their order too.
+* **Custom Layouts**: Show only the button groups you need (D-pad, Volume, etc.), make layouts per Activity.
 * **Automation Assist**: Designed for making your own buttons and automations a little bit easier.
   * **Wifi Commands**: Map Actions in Home Assistant directly to physical buttons or favorites on your physical remote, configure entirely via the UI. (`sofabaton_x1s` integration only)
   * **Key capture**: Record keypresses in the virtual remote and receive them as YAML, to make your own UI or automation.
