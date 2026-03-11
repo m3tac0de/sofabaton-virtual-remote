@@ -17,7 +17,7 @@ When enabled, the card captures button presses and Activity changes on your virt
 
 
 
-### 3. Copy to generated YAML from the notification
+### 3. Copy the generated YAML from the notification
 <img height="300" alt="image" src="https://github.com/user-attachments/assets/ab3f8b35-e118-4936-9863-324796026339" />
 
 
