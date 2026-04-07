@@ -1,5 +1,5 @@
 const CARD_NAME = "Sofabaton Virtual Remote";
-const CARD_VERSION = "0.1.4";
+const CARD_VERSION = "0.1.5";
 const KEY_CAPTURE_HELP_URL =
   "https://github.com/m3tac0de/sofabaton-virtual-remote/blob/main/docs/keycapture.md";
 const YAML_HELPER_INFO_URL =
@@ -876,6 +876,14 @@ class SofabatonRemoteCard extends HTMLElement {
     if (this._isHubIntegration()) return true;
 
     return this._hubVersion().includes("X2");
+  }
+
+  // Returns true for X1S and X2 hubs, which encode button labels as UTF-16-LE
+  // and therefore correctly display any Unicode character in the Sofabaton app.
+  // X1 hubs encode labels as ASCII (dropping non-ASCII), so umlauts would appear
+  // garbled in the app even though routing still works.
+  _supportsUnicodeCommandNames() {
+    return this._isX2() || this._hubVersion().includes("X1S");
   }
 
   _enabledButtons() {
@@ -4850,6 +4858,10 @@ class SofabatonRemoteCardEditor extends HTMLElement {
     return this._editorHubVersion().includes("X2");
   }
 
+  _supportsUnicodeCommandNames() {
+    return this._isEditorX2() || this._editorHubVersion().includes("X1S");
+  }
+
   _editorRemoteUnavailable(entityId = undefined) {
     const resolved = String((entityId ?? this._config?.entity) || "").trim();
     if (!resolved) return false;
@@ -4857,8 +4869,15 @@ class SofabatonRemoteCardEditor extends HTMLElement {
   }
 
   _sanitizeCommandName(value) {
+    // X1S/X2: allow any Unicode letter or digit (including umlauts, accented
+    // chars, etc.) because their button labels use UTF-16-LE encoding.
+    // X1: restrict to ASCII letters/digits only — the hub strips non-ASCII
+    // from button labels, so allowing them would produce garbled app display.
+    const pattern = this._supportsUnicodeCommandNames()
+      ? /[^\p{L}\p{N} ]+/gu
+      : /[^A-Za-z0-9 ]+/g;
     const cleaned = String(value ?? "")
-      .replace(/[^A-Za-z0-9 ]+/g, "")
+      .replace(pattern, "")
       .slice(0, 20);
     return cleaned;
   }
@@ -6445,8 +6464,8 @@ class SofabatonRemoteCardEditor extends HTMLElement {
     helperLink.href = KEY_CAPTURE_HELP_URL;
     helperLink.target = "_blank";
     helperLink.rel = "noopener noreferrer";
-    helperLink.title = "Learn more about Snippet Generator";
-    helperLink.setAttribute("aria-label", "Snippet Generator documentation");
+    helperLink.title = "Learn more about Key capture";
+    helperLink.setAttribute("aria-label", "Key capture documentation");
     helperLink.innerHTML = '<ha-icon icon="mdi:help-circle-outline"></ha-icon>';
     helperLink.addEventListener("click", (ev) => ev.stopPropagation());
 
