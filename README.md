@@ -14,8 +14,6 @@ You will need to have that integration installed and working, before you can use
   - If you have an **X1 or X1S** remote, install and configure the **Sofabaton X1S** integration via [`HACS`](https://my.home-assistant.io/redirect/hacs_repository/?owner=m3tac0de&repository=home-assistant-sofabaton-x1s&category=integration) or [`Github`](https://github.com/m3tac0de/home-assistant-sofabaton-x1s). This integration is also compatible with the **X2** remote.
   - If you have an **X2** remote, install and configure the **Official Sofabaton Hub** integration via [`HACS`](https://my.home-assistant.io/redirect/hacs_repository/?owner=yomonpet&repository=ha-sofabaton-hub&category=integration) or [`Github`](https://github.com/yomonpet/ha-sofabaton-hub).
 
-> [!IMPORTANT]
-> While the card functions identically across both integrations, **Wifi Commands** (triggering HA actions from physical buttons) are exclusive to the **Sofabaton X1S** integration.
 
 
 ## ✨ Features
@@ -23,12 +21,10 @@ You will need to have that integration installed and working, before you can use
 * **Works with all Sofabaton hubs**: Compatible with the Sofabaton X1, X1S, and X2 hubs.
 * **Theming friendly**: The virtual remote plays nice with your dashboard's theme, or override it for a different one.
 * **Custom Layouts**: Show only the button groups you need (D-pad, Volume, etc.), make layouts per Activity.
-* **Automation Assist**: Designed to simplify the creation of your own UIs and automations. Run Actions on button presses and Activity changes. Learn how to send any command to the hub.
-  * **Wifi Commands**: Map Actions in Home Assistant directly to physical buttons or favorites on your physical remote, configure entirely via the UI. (`sofabaton_x1s` integration only)
+* **Automation Assist**: Designed to simplify the creation of your own UIs and automations. Learn how to send any command to the hub.
   * **Key capture**: Record keypresses in the virtual remote and receive them as YAML, to replay them in your own UI or automation.
 * **Responsive Design**: The card scales to however much space it has. Tweak its behavior by setting a maximum width.
 * **Configure via the UI**: No need for YAML.
-
 
 ## 📸 Screenshots
 <img src="https://raw.githubusercontent.com/m3tac0de/sofabaton-virtual-remote/refs/heads/main/screenshots/virtual-remote-01.png" width="220"> <img src="https://raw.githubusercontent.com/m3tac0de/sofabaton-virtual-remote/refs/heads/main/screenshots/virtual-remote-02.png" width="220"> <img src="https://raw.githubusercontent.com/m3tac0de/sofabaton-virtual-remote/refs/heads/main/screenshots/virtual-remote-03.png" width="220">
@@ -109,16 +105,7 @@ layouts:
 
 <img src="https://raw.githubusercontent.com/m3tac0de/sofabaton-virtual-remote/refs/heads/main/screenshots/virtual-remote-04.png" height="300">  <img src="https://raw.githubusercontent.com/m3tac0de/sofabaton-virtual-remote/refs/heads/main/screenshots/virtual-remote-05.png" height="300">  <img src="https://raw.githubusercontent.com/m3tac0de/sofabaton-virtual-remote/refs/heads/main/screenshots/virtual-remote-06.png" height="300"> 
 
-It has 3 features to help make your own UIs and Automations:
-
-*  **Wifi Commands (X1 / X1S / X2)**  
-   ⚠️ Only available with the `sofabaton_x1s` integration.
-
-   **[Physical Button] → [Sofabaton Hub] → [Home Assistant Action]**  
-   This feature runs Home Assistant Actions when buttons are pressed on the physical remote.  
-   Configuration is performed entirely through the Home Assistant UI and then synced to the hub.
-
-   For more details, see here [`sofabaton_x1s/docs/wifi_commands.md`](https://github.com/m3tac0de/home-assistant-sofabaton-x1s/blob/main/docs/wifi_commands.md).  
+It has 2 features to help make your own UIs and Automations:
 
 *  **Key capture → copy/paste code (X1 / X1S / X2)**
 
