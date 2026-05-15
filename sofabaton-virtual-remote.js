@@ -3019,51 +3019,109 @@ var SofabatonRemoteCard = class extends HTMLElement {
   }
   _attachPrimaryAction(els, fn) {
     const targets = Array.isArray(els) ? els.filter(Boolean) : [els].filter(Boolean);
-    const gate = {
-      ts: 0,
-      pointerId: null,
-      type: null
+    
+    const wrappedStart = (ev) => {
+      const el = ev.currentTarget;
+      el._startX = ev.clientX || (ev.touches && ev.touches[0] ? ev.touches[0].clientX : 0);
+      el._startY = ev.clientY || (ev.touches && ev.touches[0] ? ev.touches[0].clientY : 0);
+      el._isScrolling = false;
+      el._isLongPress = false;
+      
+      if (el._longPressTimeout) clearTimeout(el._longPressTimeout);
+      if (el._repeatInterval) clearInterval(el._repeatInterval);
+      
+      // After 500ms, long press is starting
+      el._longPressTimeout = setTimeout(() => {
+        if (el._isScrolling) return; 
+        el._isLongPress = true;
+        
+        try { this._fireEvent("haptic", "medium"); fn(ev); } catch (e) {}
+        
+        // Currently we are using fixed interval of 300ms
+        el._repeatInterval = setInterval(() => {
+          try { this._fireEvent("haptic", "light"); fn(ev); } catch (e) {}
+        }, 300);
+      }, 500); 
     };
-    const wrapped = (ev) => {
-      const now = Date.now();
-      const pid = ev && typeof ev.pointerId === "number" ? ev.pointerId : null;
-      const etype = ev?.type || null;
-      const delta = now - gate.ts;
-      if (delta < 450) {
-        if (pid !== null && gate.pointerId === pid) return;
-        return;
+
+    const wrappedMove = (ev) => {
+      const el = ev.currentTarget;
+      if (el._isScrolling) return;
+      const x = ev.clientX || (ev.touches && ev.touches[0] ? ev.touches[0].clientX : 0);
+      const y = ev.clientY || (ev.touches && ev.touches[0] ? ev.touches[0].clientY : 0);
+      
+      // Abort on scrolling
+      if (Math.abs(x - el._startX) > 10 || Math.abs(y - el._startY) > 10) {
+        el._isScrolling = true;
+        if (el._longPressTimeout) clearTimeout(el._longPressTimeout);
+        if (el._repeatInterval) clearInterval(el._repeatInterval);
       }
-      if (delta < 1200 && (gate.type === "pointerup" || gate.type === "touchend") && (etype === "click" || etype === "ha-click" || etype === "tap")) {
-        return;
-      }
-      gate.ts = now;
-      gate.pointerId = pid;
-      gate.type = etype;
-      if (ev && typeof ev.preventDefault === "function") ev.preventDefault();
+    };
+
+    const wrappedEnd = (ev) => {
+      const el = ev.currentTarget;
+      if (el._longPressTimeout) clearTimeout(el._longPressTimeout);
+      if (el._repeatInterval) clearInterval(el._repeatInterval);
+      
+      if (ev && typeof ev.preventDefault === "function" && ev.cancelable) ev.preventDefault();
       if (ev && typeof ev.stopPropagation === "function") ev.stopPropagation();
-      if (ev && typeof ev.stopImmediatePropagation === "function")
-        ev.stopImmediatePropagation();
-      try {
-        this._fireEvent("haptic", "light");
-        fn(ev);
-      } catch (e) {
+      
+      // empty hubqueue on release, if it was an long press before
+      if (el._isLongPress) {
+         if (this._hubQueue && Array.isArray(this._hubQueue)) {
+             this._hubQueue.length = 0; // Löscht alle ausstehenden Befehle sofort
+         }
+      } else if (!el._isScrolling) {
+         // Normaler, schneller Klick
+         try {
+           this._fireEvent("haptic", "light");
+           fn(ev);
+         } catch (e) {}
       }
+      
+      el._isLongPress = false;
+      el._isScrolling = false;
     };
+
+    const wrappedCancel = (ev) => {
+      const el = ev.currentTarget;
+      if (el._longPressTimeout) clearTimeout(el._longPressTimeout);
+      if (el._repeatInterval) clearInterval(el._repeatInterval);
+      
+      // Also empty hubqueue if user sliding off the button
+      if (el._isLongPress) {
+         if (this._hubQueue && Array.isArray(this._hubQueue)) {
+             this._hubQueue.length = 0; 
+         }
+      }
+      
+      el._isLongPress = false;
+      el._isScrolling = false;
+    };
+
+    const blockDefault = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+    };
+
     const hasPointer = typeof window !== "undefined" && "PointerEvent" in window;
+    
     for (const el of targets) {
       if (hasPointer) {
-        el.addEventListener("pointerup", wrapped, {
-          capture: true,
-          passive: false
-        });
+        el.addEventListener("pointerdown", wrappedStart, { passive: true });
+        el.addEventListener("pointermove", wrappedMove, { passive: true });
+        el.addEventListener("pointerup", wrappedEnd, { passive: false });
+        el.addEventListener("pointercancel", wrappedCancel, { passive: true });
+        el.addEventListener("pointerleave", wrappedCancel, { passive: true });
       } else {
-        el.addEventListener("touchend", wrapped, {
-          capture: true,
-          passive: false
-        });
-        el.addEventListener("click", wrapped, { capture: true });
+        el.addEventListener("touchstart", wrappedStart, { passive: true });
+        el.addEventListener("touchmove", wrappedMove, { passive: true });
+        el.addEventListener("touchend", wrappedEnd, { passive: false });
+        el.addEventListener("touchcancel", wrappedCancel, { passive: true });
       }
-      el.addEventListener("ha-click", wrapped, { capture: true });
+      
+      el.addEventListener("click", blockDefault, { capture: true });
+      el.addEventListener("ha-click", blockDefault, { capture: true });
     }
   }
   _applyButtonTextSizing(btn, sizeVar) {
