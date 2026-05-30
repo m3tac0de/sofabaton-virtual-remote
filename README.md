@@ -3,7 +3,7 @@
 # Sofabaton Virtual Remote for Home Assistant
 
 [![HACS Badge](https://img.shields.io/badge/HACS-Default-green.svg)](https://github.com/hacs/integration)
-![Version](https://img.shields.io/badge/version-0.1.6-blue)
+![Version](https://img.shields.io/badge/version-0.1.7-blue)
 
 A highly customizable virtual remote for your lovelace dashboard. It works with the **Sofabaton X1, X1S, and X2** remotes.
 
@@ -77,11 +77,15 @@ Here is the full list of options:
 | `show_abc` | boolean | Show/hide the X2 A/B/C buttons. | `true` |
 | `show_macros_button`| boolean | Toggle the Macros drawer button. | `true` |
 | `show_favorites_button`| boolean | Toggle the Favorites drawer button. | `true` |
+| `mf_as_rows`| boolean | When `true`, Macros and Favorites render as their own scrollable rows in the card instead of drawer buttons. Each becomes an independently-orderable row (`macros_row / favorites_row`) and the combined `macro_favorites` row is hidden. | `false` |
+| `mf_row_visible_rows`| number | Number of button rows visible in each inline Macros / Favorites row before the row becomes scrollable. Shared by both rows. Range 1–6. Only effective when `mf_as_rows`: `true`. | `2` |
 | `custom_favorites` | list | List of custom buttons for the drawer. | `[]` |
 | `theme` | string | Set a specific theme for this card. | `""` |
 | `background_override` | list/object | Override the card background (e.g., [33, 33, 33]). | `null` |
-| `group_order` | list | Change the order of the button groups. | `activities, macro_favorites, dpad, nav, mid, media, colors, abc` |
-| `layouts` | map / object | Set Layout Options per Activity ID. | `{}` |
+| `group_order` | list | Change the order of the button groups. Valid entries: `activity, macro_favorites, macros_row, favorites_row, dpad, nav, mid, media, colors, abc`. `macros_row / favorites_row` are only rendered when `mf_as_rows`: `true`; `macro_favorites` is only rendered when `mf_as_rows`: `false`. | `activity, macro_favorites, macros_row, favorites_row, dpad, nav, mid, media, colors, abc` |
+| `layouts` | map / object | Set Layout Options per Activity ID. All keys above (including `mf_as_rows, mf_row_visible_rows, show_macros_button, show_favorites_button, group_order`, etc.) can be overridden per-activity. | `{}` |
+
+Per-activity layout example: keep the default everywhere, but in Activity 101 hide the activity selector and reorder the groups:
 
 ```yaml
 type: custom:sofabaton-virtual-remote
@@ -99,6 +103,28 @@ layouts:
       - colors
       - abc
       - macro_favorites
+```
+
+Macros/Favorites as inline scrollable rows: both sections become their own rows positioned where you want them. Each row shows 3 button rows at a time before scrolling:
+
+```yaml
+type: custom:sofabaton-virtual-remote
+entity: remote.x2_hub
+mf_as_rows: true
+mf_row_visible_rows: 3
+group_order:
+  - activity
+  - dpad
+  - nav
+  - mid
+  - macros_row        # inline scrollable macros row
+  - favorites_row     # inline scrollable favorites row
+  - media
+  - colors
+  - abc
+layouts:
+  "101":
+    mf_as_rows: false # Activity 101 falls back to drawer buttons
 ```
 
 ### Automation Assist
