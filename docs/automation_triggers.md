@@ -1,14 +1,14 @@
 # Automation Assist: MQTT Device Triggers
 
-Automation Assist helps you create **descriptive Home Assistant triggers** for your Sofabaton MQTT remote — without having to copy/paste MQTT topics and JSON payloads by hand.
+Automation Assist helps you create **descriptive Home Assistant triggers** for your Sofabaton MQTT remote—without manually copying and pasting MQTT topics and JSON payloads.
 
 ## Where to find it
 
-In the card's configuration editor, under **Automation Assist**, enable **Key capture**. Now, whenever you click any button that is bound to an MQTT device, that key press is detected by the integration and will open a popup containing the Device Triggers feature.
+In the card's configuration editor, enable **General Options → Key capture**. Whenever you press a button bound to an MQTT device, the integration detects the keypress and opens a dialog containing the Device Triggers feature.
 
 ## Why this exists
 
-Automation Assist enhances the current MQTT related workflow with **MQTT Discovery Device Triggers**:
+Automation Assist enhances the MQTT workflow with **MQTT Discovery Device Triggers**:
 
 - No manual topic/payload copy-pasting
 - Triggers appear as **real device triggers** in Home Assistant
@@ -31,7 +31,7 @@ After you click **Create Triggers** they are instantly available in Home Assista
 
 ## What Automation Assist does (in plain terms)
 
-When **Automation Assist** is enabled:
+When **Key capture** is enabled:
 
 1. The card subscribes to the MQTT keypress topic.
 2. As soon as you press a button that belongs to an MQTT/Home Assistant device, we detect the keypress.
@@ -56,7 +56,7 @@ Automation Assist **does not automatically sync** triggers when your remote conf
 
 If you make changes to your remote config (rename commands, change mappings, etc.):
 
-✅ You should return to Automation Assist and click **Create Triggers** again.
+✅ Return to the Virtual Remote, press a button for the MQTT device, and click **Create Triggers** again.
 
 ### What “Create Triggers” does when you run it again
 

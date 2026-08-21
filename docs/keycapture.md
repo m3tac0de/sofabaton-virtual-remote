@@ -1,16 +1,13 @@
 # Automation Assist: using Key capture
 
-When enabled, the card captures button presses and Activity changes on your virtual remote and sends a Notification, available in your Home Assistant sidebar, containing YAML to reproduce that button press in:
+When enabled, Key capture records button presses and Activity changes on your virtual remote. It sends a notification to the Home Assistant sidebar containing YAML that reproduces the action in:
   - your dashboard (a Lovelace button that triggers the same command)
   - a script / automation action (a ready-to-use service call)
 
     
 ## ℹ️ Capture a button press
 
-### 1. In the card's configuration editor: **Automation Assist > enable Key capture**
-<img height="300" alt="image" src="https://github.com/user-attachments/assets/81ecb091-edf9-40f9-b147-ac4698f9accb" />
-
-
+### 1. In the card's configuration editor, enable **General Options → Key capture**
 
 ### 2. Exit EditMode and press buttons or change Activities in the card. Notifications will appear in the Home Assistant sidebar.
 <img height="100" alt="image" src="https://github.com/user-attachments/assets/a38546ce-2ff6-49ca-99d2-e0791f0250d4" />

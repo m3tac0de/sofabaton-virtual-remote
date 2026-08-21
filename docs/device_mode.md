@@ -1,6 +1,6 @@
 # Device mode
 
-Device mode controls one hub device directly, using that device's own button bindings and full command list instead of an Activity.
+Device mode controls one device configured on the hub, using that device's button bindings and complete command list instead of an Activity.
 
 > [!IMPORTANT]
 > Device mode requires card version 0.2.1 or newer, the [Sofabaton X integration](https://github.com/m3tac0de/home-assistant-sofabaton-x1s), and Persistent Cache. It is not available with the Official Sofabaton Hub integration.
@@ -9,7 +9,7 @@ Device mode controls one hub device directly, using that device's own button bin
 
 1. In the **Sofabaton Control Panel**, open **Settings** and enable **Persistent Cache**.
 2. Add or edit the **Sofabaton Virtual Remote** card and select its remote entity.
-3. Turn on **Enable device mode**. Optionally use **Initial view** to start on a specific device.
+3. Open **General Options** and turn on **Enable device mode**. Optionally use **Initial view** to start on a specific device.
 4. Open **Layout Options** and select **Default device layout** or a specific device. Configure its visible controls, order, Commands presentation, and mode switch just like an Activity layout.
 
 The default Device layout applies to every device. A layout selected for a specific device contains only that device's overrides.
