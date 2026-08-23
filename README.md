@@ -47,7 +47,7 @@ You will need to have that integration installed and working, before you can use
 
 ### Manual Installation
 
-1. Download the `sofabaton-virtual-remote.js` from the [latest release](https://github.com/m3tac0de/sofabaton-virtual-remote/releases).
+1. Download the `sofabaton-virtual-remote.js` from the [latest release](https://github.com/m3tac0de/sofabaton-virtual-remote/releases/latest).
 2. Upload it to your `<config>/www/` directory.
 3. Add the resource to your Dashboard configuration:
    - **URL:** `/local/sofabaton-virtual-remote.js`
