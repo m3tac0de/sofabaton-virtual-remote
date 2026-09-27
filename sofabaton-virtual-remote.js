@@ -550,7 +550,7 @@ var o4 = s3.litElementPolyfillSupport;
 o4?.({ LitElement: i4 });
 (s3.litElementVersions ?? (s3.litElementVersions = [])).push("4.2.2");
 
-// custom_components/sofabaton_x1s/www/src/remote-card-layout.ts
+// remote-card/src/remote-card-layout.ts
 var DEFAULT_GROUP_ORDER = [
   "activity",
   "macro_favorites",
@@ -583,11 +583,13 @@ var LAYOUT_KEYS = [
   "show_dvr",
   "show_colors",
   "show_abc",
+  "show_numpad",
   "show_macros_button",
   "show_favorites_button",
   "show_device_toggle",
   "mf_as_rows",
-  "mf_row_visible_rows"
+  "mf_row_visible_rows",
+  "show_favorite_device_names"
 ];
 var DEVICE_LAYOUT_PREFIX = "device:";
 var DEVICE_DEFAULT_LAYOUT_KEY = "device:default";
@@ -614,6 +616,7 @@ var DEVICE_LAYOUT_KEYS = [
   "show_dvr",
   "show_colors",
   "show_abc",
+  "show_numpad",
   "show_commands_button",
   "show_power_button",
   "show_device_toggle",
@@ -681,6 +684,7 @@ var DEVICE_LAYOUT_DEFAULTS = Object.freeze({
   show_dvr: true,
   show_colors: true,
   show_abc: true,
+  show_numpad: true,
   show_commands_button: true,
   show_power_button: true,
   show_device_toggle: true,
@@ -789,6 +793,9 @@ function favoritesButtonEnabled(layout) {
   }
   return true;
 }
+function favoriteDeviceNamesEnabled(layout) {
+  return layout?.show_favorite_device_names === true;
+}
 function mfAsRows(layout) {
   return layout?.mf_as_rows === true;
 }
@@ -875,8 +882,43 @@ var ID = {
   RED: 190,
   GREEN: 191,
   YELLOW: 192,
-  BLUE: 193
+  BLUE: 193,
+  // X2-only on-screen numeric keypad (docs/internal/numpad-plan.md). The
+  // hub numbers them E-first (158) down to 1 (169); the card lays them out
+  // in phone order.
+  NUM_ENTER: 158,
+  NUM_0: 159,
+  NUM_DASH: 160,
+  NUM_9: 161,
+  NUM_8: 162,
+  NUM_7: 163,
+  NUM_6: 164,
+  NUM_5: 165,
+  NUM_4: 166,
+  NUM_3: 167,
+  NUM_2: 168,
+  NUM_1: 169
 };
+var NUMPAD_KEY_IDS = Object.freeze([
+  ID.NUM_1,
+  ID.NUM_2,
+  ID.NUM_3,
+  ID.NUM_4,
+  ID.NUM_5,
+  ID.NUM_6,
+  ID.NUM_7,
+  ID.NUM_8,
+  ID.NUM_9,
+  ID.NUM_0,
+  ID.NUM_DASH,
+  ID.NUM_ENTER
+]);
+function numpadEnabled(layout) {
+  if (typeof layout?.show_numpad === "boolean") {
+    return layout.show_numpad;
+  }
+  return true;
+}
 var POWERED_OFF_LABELS = /* @__PURE__ */ new Set(["powered off", "powered_off", "off"]);
 var HARD_BUTTON_ID_MAP = {
   up: ID.UP,
@@ -917,7 +959,7 @@ var X2_ONLY_HARD_BUTTON_IDS = /* @__PURE__ */ new Set([
   ID.GUIDE
 ]);
 
-// custom_components/sofabaton_x1s/www/src/remote-card-strings.ts
+// remote-card/src/remote-card-strings.ts
 var REMOTE_CARD_STRINGS_EN = {
   card: {
     selectEntityError: "Select a Sofabaton remote entity",
@@ -1039,6 +1081,8 @@ var REMOTE_CARD_STRINGS_EN = {
     openOnCurrentActivity: "Current activity",
     macrosFavoritesAsRows: "Macros/Favorites as rows",
     commandsAsRows: "Commands as rows",
+    favoriteDeviceNames: "Show device names",
+    rowOptions: (groupLabel2) => `${groupLabel2} options`,
     visibleRows: "Visible rows",
     moveGroupUp: (groupLabel2) => `Move ${groupLabel2} up`,
     moveGroupDown: (groupLabel2) => `Move ${groupLabel2} down`,
@@ -1048,6 +1092,7 @@ var REMOTE_CARD_STRINGS_EN = {
     channel: "Channel",
     mediaControls: "Playback",
     dvr: "DVR",
+    numpad: "Number pad",
     resetDefaultLayout: "Reset layout",
     shortcutSlotLeft: "Left shortcut",
     shortcutSlotMiddle: "Middle shortcut",
@@ -1106,7 +1151,20 @@ var REMOTE_CARD_STRINGS_EN = {
     blue: "Blue",
     a: "A",
     b: "B",
-    c: "C"
+    c: "C",
+    // X2 on-screen keypad; digits and dash stay untranslated like A/B/C.
+    num0: "0",
+    num1: "1",
+    num2: "2",
+    num3: "3",
+    num4: "4",
+    num5: "5",
+    num6: "6",
+    num7: "7",
+    num8: "8",
+    num9: "9",
+    numdash: "-",
+    numenter: "Enter"
   }
 };
 var TRANSLATIONS = {};
@@ -1170,7 +1228,7 @@ function isLocalizedPoweredOffLabel(label) {
   return s7 === currentStrings.card.poweredOff.toLowerCase();
 }
 
-// custom_components/sofabaton_x1s/www/src/remote-card-editor-layout.ts
+// remote-card/src/remote-card-editor-layout.ts
 function deviceStoredLayerKey(selection) {
   const id = parseDeviceLayoutKey(selection);
   return id == null ? "default" : String(id);
@@ -1234,11 +1292,13 @@ var ACTIVITY_LAYOUT_DEFAULTS = Object.freeze({
   show_dvr: true,
   show_colors: true,
   show_abc: true,
+  show_numpad: true,
   show_macros_button: true,
   show_favorites_button: true,
   show_device_toggle: true,
   mf_as_rows: false,
   mf_row_visible_rows: DEFAULT_ROW_VISIBLE_ROWS,
+  show_favorite_device_names: false,
   group_order: Object.freeze(DEFAULT_GROUP_ORDER.slice())
 });
 var sameLayoutValue = (a4, b3) => JSON.stringify(a4) === JSON.stringify(b3);
@@ -1331,6 +1391,33 @@ function groupOrderListForEditor(config, selection) {
   const layout = layoutConfigForSelection(config, selection);
   return normalizedGroupOrder(layout?.group_order);
 }
+function editorGroupVisible(config, selection, key, isX2) {
+  if (!isX2 && key === "abc") return false;
+  const device = isDeviceLayoutKey(selection);
+  if (key === "shortcuts") return device;
+  const rows = mfAsRowsForEditor(config, selection);
+  if (key === "macro_favorites") return !rows;
+  if (key === "macros_row") return rows;
+  if (key === "favorites_row") return !device && rows;
+  return true;
+}
+function resetEditorLayout(config, selection) {
+  const next = { ...config };
+  if (isDeviceLayoutKey(selection)) {
+    const block = { ...next.device_mode || {} };
+    const layouts = { ...block.layouts || {} };
+    delete layouts[deviceStoredLayerKey(selection)];
+    setOrDelete(block, "layouts", layouts);
+    setOrDelete(next, "device_mode", block);
+  } else {
+    const layouts = { ...next.layouts || {} };
+    delete layouts[selection];
+    if (selection === "default") for (const key of LAYOUT_KEYS) delete next[key];
+    else if (Number.isFinite(Number(selection))) delete layouts[String(Number(selection))];
+    setOrDelete(next, "layouts", layouts);
+  }
+  return next;
+}
 function groupLabel(key) {
   return str().groups[key] || key;
 }
@@ -1391,6 +1478,16 @@ function mfAsRowsForEditor(config, selection) {
 function mfRowVisibleRowsForEditor(config, selection) {
   return mfRowVisibleRows(layoutConfigForSelection(config, selection));
 }
+var MF_MENU_KEYS = /* @__PURE__ */ new Set([
+  "macro_favorites",
+  "favorites_row"
+]);
+function favoriteDeviceNamesForEditor(config, selection) {
+  return favoriteDeviceNamesEnabled(layoutConfigForSelection(config, selection));
+}
+function favoriteDeviceNamesPatch(enabled) {
+  return { show_favorite_device_names: !!enabled };
+}
 function mfAsRowsPatch(enabled) {
   return { mf_as_rows: !!enabled };
 }
@@ -1402,6 +1499,12 @@ function volumeTogglePatch(enabled) {
 }
 function channelTogglePatch(enabled) {
   return { show_channel: !!enabled };
+}
+function numpadEnabledForEditor(config, selection) {
+  return numpadEnabled(layoutConfigForSelection(config, selection));
+}
+function numpadTogglePatch(enabled) {
+  return { show_numpad: !!enabled };
 }
 function dvrTogglePatch(enabled) {
   return {
@@ -1424,13 +1527,14 @@ function moveVisibleGroup(order, isVisible, fromVisible, toVisible) {
   return order.map((key) => isVisible(key) ? nextVisible[vi++] : key);
 }
 
-// custom_components/sofabaton_x1s/www/src/remote-card-compat.ts
+// remote-card/src/remote-card-compat.ts
+function hubVersionFromState(remoteState) {
+  return String(remoteState?.attributes?.hub_version || "").toUpperCase();
+}
 function hubVersionFor(hass, entityId) {
   const resolved = String(entityId || "").trim();
   if (!resolved) return "";
-  return String(
-    hass?.states?.[resolved]?.attributes?.hub_version || ""
-  ).toUpperCase();
+  return hubVersionFromState(hass?.states?.[resolved]);
 }
 function isX2Hub(hubVersion, hubIntegration) {
   if (hubIntegration) return true;
@@ -1468,7 +1572,7 @@ async function ensureHaElements() {
   ]);
 }
 
-// custom_components/sofabaton_x1s/www/src/remote-card-styles.ts
+// remote-card/src/remote-card-styles.ts
 var REMOTE_CARD_CSS = `
       :host {
         --sb-group-radius: var(--ha-card-border-radius, 18px);
@@ -1509,6 +1613,11 @@ var REMOTE_CARD_CSS = `
         --sb-overlay-hover: color-mix(in srgb, var(--sb-tint-base) 10%, transparent);
         --sb-overlay-press: color-mix(in srgb, var(--sb-tint-base) 18%, transparent);
         --sb-accent-text: color-mix(in srgb, var(--primary-color) 35%, var(--primary-text-color));
+        /* Field surface for native inputs (the commands filter): the card
+           surface with a 6% text tint, same recipe as the control panel.
+           The theme's input fill is not trusted (Caule aliases it to the
+           primary colour, glass themes set it transparent). */
+        --sb-field-surface: color-mix(in srgb, var(--sb-tint-base) 6%, var(--ha-card-background, var(--card-background-color, var(--primary-background-color))));
         /* Raised-surface pair used by key_style tinted/elevated. Computed
            here (not on the consumers) so redefining --ha-card-background on
            a drawer button from it is not a self-reference. */
@@ -1597,8 +1706,8 @@ var REMOTE_CARD_CSS = `
       .wrap--keys-elevated .drawer-btn {
         --ha-card-box-shadow: 0 1px 2px rgba(0, 0, 0, 0.14), 0 2px 6px rgba(0, 0, 0, 0.10);
       }
-      /* Tinted panels (the former key_style "panel", an independent
-         switch since 0.3.0 so it combines with any key style): the
+      /* Tinted panels (the former key_style "panel", now an independent
+         switch so it combines with any key style): the
          bordered group containers take the dock surface. With flat keys
          the keys KEEP the card background and read as card-coloured
          cutouts on a softly accent-tinted panel; with a tinted/elevated/
@@ -1830,8 +1939,8 @@ var REMOTE_CARD_CSS = `
         font: inherit;
         font-size: 13px;
         color: var(--primary-text-color);
-        background: var(--input-fill-color, var(--secondary-background-color, rgb(243, 243, 243)));
-        border: 1px solid var(--divider-color);
+        background: var(--sb-field-surface, var(--input-fill-color, var(--secondary-background-color, rgb(243, 243, 243))));
+        border: 1px solid var(--sb-key-border, var(--divider-color));
         border-radius: var(--sb-group-radius);
         outline: none;
       }
@@ -2284,6 +2393,43 @@ var REMOTE_CARD_CSS = `
         text-overflow: ellipsis;
       }
 
+      /* Favorites device name band (show_favorite_device_names): a narrow
+         strip along the top edge, clipped by the card's radius; the content
+         below recentres in the remaining height. */
+      .drawer-btn {
+        --sb-device-band-h: 14px;
+      }
+      .drawer-btn__device {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: var(--sb-device-band-h);
+        padding: 0 6px;
+        box-sizing: border-box;
+        background: color-mix(in srgb, var(--sb-key-label-color, var(--primary-color)) 16%, transparent);
+        color: color-mix(in srgb, var(--primary-text-color) 80%, transparent);
+        font-size: 9px;
+        font-weight: 500;
+        line-height: var(--sb-device-band-h);
+        letter-spacing: 0.02em;
+        text-align: center;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        pointer-events: none;
+      }
+      .drawer-btn--custom .drawer-btn__device {
+        padding: 0 12px;
+        text-align: start;
+      }
+      .drawer-btn--banded .drawer-btn__inner--stack {
+        padding-top: calc(var(--sb-device-band-h) + 2px);
+      }
+      .drawer-btn--banded .drawer-btn__inner--row {
+        padding-top: var(--sb-device-band-h);
+      }
+
 
       /* Active state for buttons */
       .macroFavoritesButton.active-tab {
@@ -2294,6 +2440,10 @@ var REMOTE_CARD_CSS = `
       /* D-pad cluster */
       .dpad {
         padding: 12px;
+        position: relative;
+        perspective: 900px;
+      }
+      .dpad-face--keys {
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
         grid-template-areas:
@@ -2309,6 +2459,113 @@ var REMOTE_CARD_CSS = `
       .dpad .area-ok { grid-area: ok; }
       .dpad .area-right { grid-area: right; }
       .dpad .area-down { grid-area: down; }
+
+      /* Number pad face (docs/internal/numpad-plan.md). The keys face stays
+         in flow and sets the group's height; the keypad face is laid over
+         it inside the same padding, twelve square keys in four rows, so the
+         rows below never move (Q1). The small round toggle in the dead
+         corner flips; a tap anywhere outside the group flips back (the
+         card's outside-close handler). */
+      .dpad-face {
+        backface-visibility: hidden;
+        transition:
+          transform 320ms ease,
+          opacity 200ms ease;
+      }
+      .dpad-face--numpad {
+        position: absolute;
+        inset: 12px;
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-rows: repeat(4, minmax(0, 1fr));
+        gap: 6px 10px;
+        align-items: stretch;
+        justify-items: center;
+        transform: rotateX(-180deg);
+        opacity: 0;
+        --sb-key-font-size: clamp(11px, 5.5cqw, 40px);
+      }
+      .dpad-face--numpad .key {
+        width: auto;
+        height: 100%;
+      }
+      .dpad--numpad-open .dpad-face--keys {
+        transform: rotateX(180deg);
+        opacity: 0;
+      }
+      .dpad--numpad-open .dpad-face--numpad {
+        transform: rotateX(0);
+        opacity: 1;
+      }
+      /* The button is the hit box: the visible ring is drawn 8px inside
+         it, so a finger that lands a little off the circle (the corner is
+         dead space anyway) still opens the pad. The ring sits 10px from
+         the frame, as before. */
+      .dpad-numpad-toggle {
+        position: absolute;
+        right: 2px;
+        bottom: 2px;
+        box-sizing: content-box;
+        width: clamp(26px, 7cqw, 34px);
+        height: clamp(26px, 7cqw, 34px);
+        margin: 0;
+        padding: 8px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        border: 0;
+        background: transparent;
+        color: var(--sb-key-label-color, var(--primary-color));
+        opacity: 0.45;
+        cursor: pointer;
+        --mdc-icon-size: 16px;
+        font-size: 16px;
+        line-height: 1;
+        -webkit-tap-highlight-color: transparent;
+        transition: opacity 200ms ease;
+      }
+      .dpad-numpad-toggle::before {
+        content: "";
+        position: absolute;
+        inset: 8px;
+        border-radius: 50%;
+        border: 1px solid currentColor;
+        pointer-events: none;
+      }
+      .dpad-numpad-toggle:hover,
+      .dpad-numpad-toggle:focus-visible {
+        opacity: 0.85;
+        outline: none;
+      }
+      .dpad--numpad-open .dpad-numpad-toggle {
+        opacity: 0;
+        pointer-events: none;
+      }
+      /* D-pad off, number pad on: the keypad is the group. */
+      .dpad--numpad-only {
+        perspective: none;
+      }
+      .dpad--numpad-only .dpad-face--numpad {
+        position: static;
+        inset: auto;
+        transform: none;
+        opacity: 1;
+        gap: 10px;
+        align-items: center;
+        justify-items: stretch;
+        --sb-key-font-size: clamp(11px, 7cqw, 50px);
+      }
+      .dpad--numpad-only .dpad-face--numpad .key {
+        width: 100%;
+        height: auto;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .dpad-face,
+        .dpad-numpad-toggle {
+          transition: none;
+        }
+      }
 
       /* The UI follows the locale direction, but these are spatial controls:
          changing language must never swap the physical Left/Right keys or the
@@ -2469,16 +2726,44 @@ var REMOTE_CARD_CSS = `
         --sb-control-background: var(--sb-color);
       }
 
-      .warn {
-        position: absolute;
-        top: 12px;
-        left: 12px;
-        right: 12px;
-        z-index: 10;
-        font-size: 12px;
-        opacity: .9;
-        border-inline-start: 3px solid var(--warning-color, orange);
-        padding-inline-start: 10px;
+      /* Status notice (remote unavailable, no activities, device keymap
+         missing / failed): an in-flow row at the top of the layout, styled
+         like HA's ha-alert so it reads on any theme. The surface is the
+         card background with a 12% accent tint and the text is the theme's
+         primary text colour, i.e. exactly the contrast the theme already
+         guarantees for the card's own text. It used to be a 12px,
+         background-less absolute overlay sitting on the activity selector,
+         which was unreadable on most themes and clipped on narrow cards. */
+      .sb-notice {
+        --sb-notice-accent: var(--warning-color, #ffa600);
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 10px 12px;
+        border-radius: min(12px, var(--sb-group-radius));
+        border-inline-start: 4px solid var(--sb-notice-accent);
+        background: color-mix(in srgb, var(--sb-notice-accent) 12%, var(--ha-card-background, var(--card-background-color, var(--primary-background-color))));
+        color: var(--primary-text-color);
+        font-size: clamp(13px, 3.6cqw, 15px);
+        line-height: 1.4;
+        text-align: start;
+        overflow-wrap: anywhere;
+      }
+      .sb-notice--error {
+        --sb-notice-accent: var(--error-color, #db4437);
+      }
+      .sb-notice ha-icon {
+        flex: none;
+        margin-top: 1px;
+        color: var(--sb-notice-accent);
+        /* Real ha-icon sizes itself from --mdc-icon-size; the harness stub
+           from font-size. Both land on 20px. */
+        font-size: 20px;
+        --mdc-icon-size: 20px;
+      }
+      .sb-notice__text {
+        flex: 1 1 auto;
+        min-width: 0;
       }
 
       .sb-modal {
@@ -2610,6 +2895,18 @@ var REMOTE_CARD_EDITOR_CSS = `
           .sb-layout-switch-item.is-disabled { opacity: 0.45; pointer-events: none; }
           .sb-layout-switch-item-empty { visibility: hidden; }
           .sb-layout-switch-label { font-size: 13px; opacity: 0.9; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+          /* Row options ("..." beside the drag handle): the panel drops out
+             inside the row, spanning its grid, like the Shortcuts slot
+             panel, so ha-sortable drags it along. While any row has one, every
+             row reserves the button's slot so the switch columns stay aligned. */
+          .sb-row-tail { display: flex; align-items: center; gap: 6px; justify-self: end; }
+          .sb-row-menu-spacer { width: 32px; height: 32px; flex: 0 0 auto; }
+          .sb-row-menu-btn { color: var(--secondary-text-color); }
+          .sb-row-menu-btn ha-icon { --mdc-icon-size: 20px; }
+          .sb-row-menu-btn.is-open { border-color: var(--primary-color); color: var(--primary-color); box-shadow: 0 0 0 1px var(--primary-color) inset; }
+          .sb-row-menu-panel { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 10px; margin: 2px 0 4px; border: 1px solid var(--divider-color); border-radius: 10px; padding: 10px 12px; background: rgba(var(--rgb-primary-text-color, 0, 0, 0), 0.04); }
+          /* These labels explain the switch next to them \u2014 translations can be long, so wrap instead of ellipsing. */
+          .sb-row-menu-panel .sb-layout-switch-label { white-space: normal; overflow: visible; text-overflow: clip; }
           .sb-mf-rows-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: center; background: rgba(var(--rgb-primary-text-color, 0, 0, 0), 0.04); border: 1px solid var(--divider-color); border-radius: 10px; padding: 8px 12px; margin: 8px 0; }
           /* This label explains the switch next to it \u2014 translations can be long, so wrap instead of ellipsing. */
           .sb-mf-rows-row .sb-layout-switch-label { white-space: normal; overflow: visible; text-overflow: clip; }
@@ -2771,9 +3068,9 @@ var REMOTE_CARD_EDITOR_CSS = `
           }
         `;
 
-// custom_components/sofabaton_x1s/www/src/remote-card-shared.ts
+// remote-card/src/remote-card-shared.ts
 var CARD_NAME = "Sofabaton Virtual Remote";
-var CARD_VERSION = "0.2.2";
+var CARD_VERSION = "0.2.4";
 var KEY_CAPTURE_HELP_URL = "https://github.com/m3tac0de/sofabaton-virtual-remote/blob/main/docs/keycapture.md";
 var LOG_ONCE_KEY = `__${CARD_NAME}_logged__`;
 var AUTOMATION_ASSIST_SESSION_KEY = "__sofabatonAutomationAssistSession__";
@@ -2827,7 +3124,7 @@ function stableJsonSignature(value) {
   }
 }
 
-// custom_components/sofabaton_x1s/www/src/remote-card-long-press.ts
+// remote-card/src/remote-card-long-press.ts
 var LONG_PRESS_GROUPS = ["volume", "channel", "dpad"];
 var LONG_PRESS_GROUP_FOR_KEY = {
   volup: "volume",
@@ -2902,7 +3199,7 @@ function hubLongPressBinding(attributes, scopeId, buttonId) {
   return { device_id: device, command_id: command };
 }
 
-// custom_components/sofabaton_x1s/www/src/editor-sections/expander.ts
+// remote-card/src/editor-sections/expander.ts
 function renderEditorExpander(params) {
   const toggle = (ev) => {
     ev.preventDefault();
@@ -2931,7 +3228,7 @@ function renderEditorExpander(params) {
   `;
 }
 
-// custom_components/sofabaton_x1s/www/src/editor-sections/option-row.ts
+// remote-card/src/editor-sections/option-row.ts
 function renderOptionRow(params) {
   const onSwitchChange = (ev) => {
     ev.preventDefault();
@@ -2976,7 +3273,7 @@ function renderFormRow(form, className = "") {
   return b2`<div class="sb-opt-row sb-opt-row--form ${className}">${form}</div>`;
 }
 
-// custom_components/sofabaton_x1s/www/src/editor-sections/general-options.ts
+// remote-card/src/editor-sections/general-options.ts
 var INITIAL_VIEW_FIELD = "open_device";
 var LONG_PRESS_BUTTONS_FIELD = "long_press_buttons";
 var computeSubFormLabel = (schema) => {
@@ -3089,7 +3386,7 @@ function renderGeneralOptionsSection(params) {
   });
 }
 
-// custom_components/sofabaton_x1s/www/src/editor-sections/shortcuts.ts
+// remote-card/src/editor-sections/shortcuts.ts
 var SHORTCUT_ICON_FIELD = "icon";
 var SHORTCUT_COMMAND_FIELD = "command";
 function slotLabel(slot) {
@@ -3212,7 +3509,7 @@ function renderShortcutsRowPanel(params) {
   `;
 }
 
-// custom_components/sofabaton_x1s/www/src/editor-sections/styling-options.ts
+// remote-card/src/editor-sections/styling-options.ts
 var computeEditorFieldLabel = (schema) => str().editor.fieldLabels[schema.name] || schema.name;
 var DEFAULT_BACKGROUND_OVERRIDE = [255, 255, 255];
 function renderStylingOptionsSection(params) {
@@ -3494,7 +3791,7 @@ var n6 = e4(class extends f3 {
   }
 });
 
-// custom_components/sofabaton_x1s/www/src/editor-sections/group-order.ts
+// remote-card/src/editor-sections/group-order.ts
 var stopEvent = (ev) => {
   ev.preventDefault();
   ev.stopPropagation();
@@ -3629,6 +3926,43 @@ function renderGroupOrderSection(params) {
       </div>
     </div>
   `;
+  const menuAvailable = !params.isDeviceSelection && params.favoriteDeviceNamesAvailable;
+  const hasRowMenu = (key) => menuAvailable && MF_MENU_KEYS.has(key);
+  const rowMenuPanel = (key) => b2`
+    <div class="sb-row-menu-panel" id=${`sb-row-menu-${key}`}>
+      ${renderSwitchItem(
+    str().editor.favoriteDeviceNames,
+    params.favoriteDeviceNames,
+    params.onSetFavoriteDeviceNames
+  )}
+    </div>
+  `;
+  const rowMenuButton = (key) => {
+    if (!hasRowMenu(key)) {
+      return menuAvailable ? b2`<div class="sb-row-menu-spacer" aria-hidden="true"></div>` : b2``;
+    }
+    const open = params.rowMenuKey === key;
+    const label = params.groupLabel(key);
+    return b2`
+      <button
+        type="button"
+        class="sb-icon-btn sb-row-menu-btn${open ? " is-open" : ""}"
+        aria-label=${str().editor.rowOptions(label)}
+        aria-expanded=${open ? "true" : "false"}
+        aria-controls=${`sb-row-menu-${key}`}
+        @click=${(ev) => {
+      stopEvent(ev);
+      params.onToggleRowMenu(key);
+    }}
+      >
+        <ha-icon icon="mdi:dots-horizontal"></ha-icon>
+      </button>
+    `;
+  };
+  const rowTail = (key, index) => b2`
+    <div class="sb-row-tail">${rowMenuButton(key)}${moveControl(key, index)}</div>
+    ${params.rowMenuKey === key && hasRowMenu(key) ? rowMenuPanel(key) : A}
+  `;
   const moveControl = (key, index) => {
     if (params.sortableReady) {
       return b2`
@@ -3696,6 +4030,15 @@ function renderGroupOrderSection(params) {
         ${renderSwitchItem(str().editor.volume, params.volumeEnabled, params.onSetVolume)}
         ${renderSwitchItem(str().editor.channel, params.channelEnabled, params.onSetChannel)}
       `;
+    } else if (key === "dpad" && params.showNumpadSwitch) {
+      cells = b2`
+        ${renderSwitchItem(
+        params.groupLabel(key),
+        params.isGroupEnabled(key),
+        (val) => params.onSetGroupEnabled(key, val)
+      )}
+        ${renderSwitchItem(str().editor.numpad, params.numpadEnabled, params.onSetNumpad)}
+      `;
     } else if (key === "media") {
       cells = b2`
         ${renderSwitchItem(str().editor.mediaControls, params.mediaEnabled, params.onSetMedia)}
@@ -3712,7 +4055,7 @@ function renderGroupOrderSection(params) {
       `;
       return b2`
         <div class="sb-layout-row sb-layout-row-order">
-          ${cells}${moveControl(key, index)}${params.shortcutsPanel}
+          ${cells}${rowTail(key, index)}${params.shortcutsPanel}
         </div>
       `;
     } else {
@@ -3726,7 +4069,7 @@ function renderGroupOrderSection(params) {
       `;
     }
     return b2`
-      <div class="sb-layout-row sb-layout-row-order">${cells}${moveControl(key, index)}</div>
+      <div class="sb-layout-row sb-layout-row-order">${cells}${rowTail(key, index)}</div>
     `;
   };
   const rowsHost = b2`
@@ -3783,7 +4126,7 @@ function renderGroupOrderSection(params) {
   });
 }
 
-// custom_components/sofabaton_x1s/www/src/remote-card-editor-element.ts
+// remote-card/src/remote-card-editor-element.ts
 var CARD_SETTING_DEFAULTS = {
   theme: "",
   max_width: 360,
@@ -3831,6 +4174,8 @@ var SofabatonRemoteCardEditor = class extends i4 {
     this._shortcutDraftCommand = null;
     /** Editor-lifetime keymap cache, keyed by device id. */
     this._editorKeymaps = {};
+    /** Group-order row whose "..." options panel is folded out, if any. */
+    this._rowMenuKey = null;
   }
   // ---------- shortcuts (device selections only) ----------
   /**
@@ -3865,6 +4210,21 @@ var SofabatonRemoteCardEditor = class extends i4 {
     }).catch(() => {
       this._editorKeymaps[key] = { status: "error", commands: [] };
     }).then(() => this.requestUpdate());
+  }
+  _toggleRowMenu(key) {
+    this._rowMenuKey = this._rowMenuKey === key ? null : key;
+    this.requestUpdate();
+  }
+  /**
+   * "As rows" swaps the combined macro_favorites row for the macros_row /
+   * favorites_row pair (and back); an open "..." panel follows the
+   * favorites onto the row that replaces its own.
+   */
+  _setMfAsRows(enabled) {
+    if (this._rowMenuKey && MF_MENU_KEYS.has(this._rowMenuKey)) {
+      this._rowMenuKey = enabled ? "favorites_row" : "macro_favorites";
+    }
+    this._updateLayoutConfig(mfAsRowsPatch(enabled));
   }
   _clearShortcutPanel() {
     this._shortcutOpenSlot = null;
@@ -4178,24 +4538,13 @@ var SofabatonRemoteCardEditor = class extends i4 {
     if (selection === this._layoutSelectionKey()) return;
     this._layoutSelection = selection;
     this._clearShortcutPanel();
+    this._rowMenuKey = null;
     this._setPreviewActivityForSelection(selection);
     this.requestUpdate();
   }
   // ---------- group order ----------
   _isEditorGroupVisible(key, isEditorX2) {
-    if (!isEditorX2 && key === "abc") return false;
-    const selection = this._layoutSelectionKey();
-    if (key === "shortcuts") return isDeviceLayoutKey(selection);
-    const asRows = mfAsRowsForEditor(this._config, selection);
-    if (isDeviceLayoutKey(selection)) {
-      if (key === "macro_favorites") return !asRows;
-      if (key === "macros_row") return asRows;
-      if (key === "favorites_row") return false;
-      return true;
-    }
-    if (key === "macro_favorites") return !asRows;
-    if (key === "macros_row" || key === "favorites_row") return asRows;
-    return true;
+    return editorGroupVisible(this._config, this._layoutSelectionKey(), key, isEditorX2);
   }
   _moveGroupByVisibleIndex(fromVisible, toVisible) {
     const isEditorX2 = this._isEditorX2();
@@ -4228,48 +4577,7 @@ var SofabatonRemoteCardEditor = class extends i4 {
     this._updateLayoutConfig({ group_order: next });
   }
   _resetGroupOrder() {
-    const selection = this._layoutSelectionKey();
-    let next;
-    if (isDeviceLayoutKey(selection)) {
-      next = this._withDeviceModeBlock((block) => {
-        const layouts = {
-          ...block.layouts || {}
-        };
-        delete layouts[deviceStoredLayerKey(selection)];
-        if (Object.keys(layouts).length) {
-          block.layouts = layouts;
-        } else {
-          delete block.layouts;
-        }
-      });
-    } else if (selection !== "default") {
-      next = { ...this._config };
-      const layouts = { ...next.layouts || {} };
-      delete layouts[selection];
-      if (Number.isFinite(Number(selection))) {
-        delete layouts[String(Number(selection))];
-      }
-      if (Object.keys(layouts).length) {
-        next.layouts = layouts;
-      } else {
-        delete next.layouts;
-      }
-    } else {
-      next = { ...this._config };
-      for (const key of LAYOUT_KEYS) {
-        delete next[key];
-      }
-      if (next.layouts && typeof next.layouts === "object") {
-        const layouts = { ...next.layouts };
-        delete layouts.default;
-        if (Object.keys(layouts).length) {
-          next.layouts = layouts;
-        } else {
-          delete next.layouts;
-        }
-      }
-    }
-    this._config = next;
+    this._config = resetEditorLayout(this._config, this._layoutSelectionKey());
     this._fireChanged();
     this.requestUpdate();
   }
@@ -4430,6 +4738,10 @@ var SofabatonRemoteCardEditor = class extends i4 {
       channelEnabled: channelGroupEnabled(layoutCfg),
       mediaEnabled: mediaGroupEnabled(layoutCfg),
       dvrEnabled: dvrGroupEnabled(layoutCfg),
+      // The official integration maps no numeric keys, so the standalone
+      // card never shows the keypad nor its switch.
+      showNumpadSwitch: isEditorX2 && this._isX1sIntegrationForEditor(),
+      numpadEnabled: numpadEnabledForEditor(this._config, this._layoutSelectionKey()),
       isDeviceSelection: isDeviceLayoutKey(this._layoutSelectionKey()),
       shortcutsStrip,
       shortcutsPanel,
@@ -4459,11 +4771,22 @@ var SofabatonRemoteCardEditor = class extends i4 {
         if (patch) this._updateLayoutConfig(patch);
       },
       onSetDvr: (v3) => this._updateLayoutConfig(dvrTogglePatch(v3)),
+      onSetNumpad: (v3) => this._updateLayoutConfig(numpadTogglePatch(v3)),
       onSetGroupEnabled: (key, v3) => {
         const patch = groupEnabledPatch(key, v3);
         if (patch) this._updateLayoutConfig(patch);
       },
-      onSetMfAsRows: (v3) => this._updateLayoutConfig(mfAsRowsPatch(v3)),
+      rowMenuKey: this._rowMenuKey,
+      onToggleRowMenu: (key) => this._toggleRowMenu(key),
+      // Names resolve from the `devices` attribute: our integration with
+      // the persistent cache on, like every other device-aware feature.
+      favoriteDeviceNamesAvailable: deviceCapable,
+      favoriteDeviceNames: favoriteDeviceNamesForEditor(
+        this._config,
+        this._layoutSelectionKey()
+      ),
+      onSetFavoriteDeviceNames: (v3) => this._updateLayoutConfig(favoriteDeviceNamesPatch(v3)),
+      onSetMfAsRows: (v3) => this._setMfAsRows(v3),
       onSetMfRowVisibleRows: (v3) => this._updateLayoutConfig(mfRowVisibleRowsPatch(v3)),
       onMoveGroupByKey: (key, delta) => this._moveGroupByKey(key, delta),
       onMoveGroupByVisibleIndex: (from, to) => this._moveGroupByVisibleIndex(from, to),
@@ -4528,7 +4851,7 @@ var c6 = e4(class extends i6 {
   }
 });
 
-// custom_components/sofabaton_x1s/www/src/remote-card-ui-helpers.ts
+// remote-card/src/remote-card-ui-helpers.ts
 function automationAssistLabelForKey(key, label) {
   const trimmed = String(label ?? "").trim();
   if (trimmed) return trimmed;
@@ -4555,7 +4878,7 @@ function rgbToCss(rgb) {
   return "";
 }
 
-// custom_components/sofabaton_x1s/www/src/remote-card-runtime-display.ts
+// remote-card/src/remote-card-runtime-display.ts
 function midModeState({
   showVolume,
   showChannel,
@@ -4634,7 +4957,7 @@ function macroFavoriteDisplayState({
   };
 }
 
-// custom_components/sofabaton_x1s/www/src/remote-card-drawer-display.ts
+// remote-card/src/remote-card-drawer-display.ts
 function drawerVisibilityState({
   activeDrawer,
   showMacrosButton,
@@ -4665,7 +4988,7 @@ function drawerVisibilityState({
   };
 }
 
-// custom_components/sofabaton_x1s/www/src/remote-card-gestures.ts
+// remote-card/src/remote-card-gestures.ts
 function createPrimaryActionGate() {
   return { ts: 0, pointerId: null, type: null };
 }
@@ -4887,7 +5210,7 @@ var LongPressTimer = class {
   }
 };
 
-// custom_components/sofabaton_x1s/www/src/remote-card-state.ts
+// remote-card/src/remote-card-state.ts
 function hasOwn(obj, key) {
   return obj != null && Object.prototype.hasOwnProperty.call(obj, key);
 }
@@ -5052,7 +5375,7 @@ function resolveHubActivityData({
   };
 }
 
-// custom_components/sofabaton_x1s/www/src/remote-card-activity-state.ts
+// remote-card/src/remote-card-activity-state.ts
 function buildActivitySelectState({
   editMode,
   preview,
@@ -5125,7 +5448,7 @@ function noActivitiesWarning(isUnavailable, activitiesLength, loadState) {
   return "";
 }
 
-// custom_components/sofabaton_x1s/www/src/remote-card-hub.ts
+// remote-card/src/remote-card-hub.ts
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -5185,7 +5508,7 @@ function stopActivityCommand(activityId) {
   return ["type:stop_activity", `activity_id:${Number(activityId)}`];
 }
 
-// custom_components/sofabaton_x1s/www/src/remote-card-actions.ts
+// remote-card/src/remote-card-actions.ts
 function hubAssignedKeyCommand(activityId, commandId) {
   const activity = Number(activityId);
   const key = Number(commandId);
@@ -5227,7 +5550,7 @@ function remoteSendCommandData(entityId, commandId, deviceId) {
   };
 }
 
-// custom_components/sofabaton_x1s/www/src/remote-card-editor-helpers.ts
+// remote-card/src/remote-card-editor-helpers.ts
 function normalizeCustomFavorite(item, idx = 0) {
   if (!item || typeof item !== "object") return null;
   const name = String(item.name ?? item.label ?? "").trim();
@@ -5270,7 +5593,101 @@ function customFavoritesSignature(items) {
   return `${parts.length}:${parts.join(";;")}`;
 }
 
-// custom_components/sofabaton_x1s/www/src/state/remote-card-store.ts
+// remote-card/src/backend/ha-backend.ts
+var INTEGRATION_BY_PLATFORM = {
+  sofabaton_x1s: "x1s",
+  sofabaton_hub: "hub"
+};
+var HaRemoteBackend = class {
+  constructor() {
+    this.kind = "ha";
+    this._hass = null;
+    this._entityId = "";
+  }
+  get hass() {
+    return this._hass;
+  }
+  get entityId() {
+    return this._entityId;
+  }
+  setHass(hass) {
+    this._hass = hass;
+  }
+  setTarget(target) {
+    this._entityId = String(target ?? "");
+  }
+  snapshot() {
+    if (!this._entityId) return void 0;
+    return this._hass?.states?.[this._entityId];
+  }
+  async probeIntegration() {
+    if (!this._hass?.callWS || !this._entityId) {
+      throw new Error("hass.callWS unavailable");
+    }
+    const entry = await this._hass.callWS({
+      type: "config/entity_registry/get",
+      entity_id: this._entityId
+    });
+    return INTEGRATION_BY_PLATFORM[String(entry?.platform || "")] ?? "unknown";
+  }
+  entryId() {
+    return String(this.snapshot()?.attributes?.entry_id ?? "");
+  }
+  async devicePowerState(deviceId) {
+    if (!this._hass?.callWS) return null;
+    const entryId = this.entryId();
+    if (!entryId) return null;
+    try {
+      const response = await this._hass.callWS({
+        type: "sofabaton_x1s/device/power_state",
+        entry_id: entryId,
+        device_id: deviceId
+      });
+      const raw = response?.power_state;
+      return raw === 1 ? 1 : raw === 0 ? 0 : null;
+    } catch (_err) {
+      return null;
+    }
+  }
+  async deviceKeymap(deviceId) {
+    if (!this._hass?.callWS) return null;
+    const entryId = this.entryId();
+    if (!entryId) return null;
+    return this._hass.callWS({
+      type: "sofabaton_x1s/device/keymap",
+      entry_id: entryId,
+      device_id: deviceId
+    });
+  }
+  async sendCommand(commandId, scopeId) {
+    const serviceData = remoteSendCommandData(this._entityId, commandId, scopeId);
+    if (!serviceData) return;
+    await this.callService("remote", "send_command", serviceData);
+  }
+  async sendRawCommandList(list) {
+    await this.callService("remote", "send_command", {
+      entity_id: this._entityId,
+      command: list
+    });
+  }
+  async startActivity(activity) {
+    await this.callService("remote", "turn_on", {
+      entity_id: this._entityId,
+      activity: activity.name
+    });
+  }
+  async stopActivity() {
+    await this.callService("remote", "turn_off", { entity_id: this._entityId });
+  }
+  async callService(domain, service, data = {}, target = void 0) {
+    if (!this._hass?.callService) {
+      throw new TypeError("hass.callService unavailable");
+    }
+    return this._hass.callService(domain, service, data, target);
+  }
+};
+
+// remote-card/src/state/remote-card-store.ts
 var POWER_ON_KEY_ID = 198;
 var POWER_OFF_KEY_ID = 199;
 var POWER_ASSUMPTION_TTL_MS = 15e3;
@@ -5303,12 +5720,16 @@ function normalizeRemoteCardConfig(config) {
 }
 var RemoteCardStore = class {
   constructor(onChange, host) {
-    this._hass = null;
+    // The backend port (docs/internal/web-remote-plan.md): HA's `hass` is
+    // wrapped by the HA adapter; the web remote installs a server adapter.
+    this._backend = null;
+    this._haBackend = null;
+    this._backendUnsubscribe = null;
     this._config = null;
     this._editMode = false;
     this.previewActivity = null;
     // Integration detection (x1s vs hub)
-    this.integrationDomain = null;
+    this.integration = null;
     this.integrationEntityId = null;
     this.integrationDetectingFor = null;
     // Hub request queue (prevents parallel requests)
@@ -5326,6 +5747,7 @@ var RemoteCardStore = class {
     this.enabledButtonsCache = [];
     this.enabledButtonsCacheKey = null;
     this.enabledButtonsInvalid = false;
+    this.loadPending = false;
     // Activity switching / load indicator
     this.pendingActivity = null;
     this.pendingActivityAt = null;
@@ -5341,6 +5763,7 @@ var RemoteCardStore = class {
     this._mode = "activity";
     this._deviceId = null;
     this.deviceKeymaps = {};
+    this.deviceKeymapFetching = /* @__PURE__ */ new Set();
     this.initialViewApplied = false;
     this.commandFilter = "";
     // Drawer / menu UI state (direction math stays in the element)
@@ -5356,8 +5779,17 @@ var RemoteCardStore = class {
     this.host = host;
   }
   // ---------- core wiring ----------
+  /** The active backend, or null before the card is wired to HA or a server. */
+  get backend() {
+    return this._backend;
+  }
+  /**
+   * The Lovelace `hass` object behind the HA adapter, null on any other
+   * backend. HA-only consumers (Automation Assist, ha-select, the theme
+   * engine) read it; the store itself never does.
+   */
   get hass() {
-    return this._hass;
+    return this._haBackend?.hass ?? null;
   }
   get config() {
     return this._config;
@@ -5377,16 +5809,35 @@ var RemoteCardStore = class {
       this.previewActivity = cached ?? "";
     }
     this._config = normalizeRemoteCardConfig(config);
+    this._backend?.setTarget(String(this._config.entity));
     this.activeDrawer = null;
     this.activityMenuOpen = false;
     this.initialViewApplied = false;
     this.invalidateFingerprint();
     this.onChange();
   }
+  /** HA entry point: wrap `hass` in the HA adapter and make it the backend. */
   setHass(hass) {
-    this._hass = hass;
+    if (!this._haBackend) this._haBackend = new HaRemoteBackend();
+    this._haBackend.setHass(hass);
+    this.setBackend(this._haBackend);
+  }
+  /** Generic entry point: any RemoteBackend (the web remote's server adapter). */
+  setBackend(backend) {
+    if (this._backend !== backend) {
+      this._backendUnsubscribe?.();
+      this._backendUnsubscribe = null;
+      this._backend = backend;
+      if (backend?.subscribe) {
+        this._backendUnsubscribe = backend.subscribe(() => this.onBackendChange());
+      }
+    }
+    if (backend && this._config?.entity) backend.setTarget(String(this._config.entity));
+    this.onBackendChange();
+  }
+  onBackendChange() {
     void this.ensureIntegration().then(() => {
-      if (!this.shouldNotifyForHass(hass)) return;
+      if (!this.shouldNotify()) return;
       this.onChange();
     });
   }
@@ -5400,8 +5851,13 @@ var RemoteCardStore = class {
     this.invalidateFingerprint();
   }
   connected() {
+    if (this._backend?.subscribe && !this._backendUnsubscribe) {
+      this._backendUnsubscribe = this._backend.subscribe(() => this.onBackendChange());
+    }
   }
   disconnected() {
+    this._backendUnsubscribe?.();
+    this._backendUnsubscribe = null;
     if (this.commandPulseTimeout) clearTimeout(this.commandPulseTimeout);
     if (this.activityLoadTimeout) clearTimeout(this.activityLoadTimeout);
     this.commandPulseTimeout = null;
@@ -5412,18 +5868,18 @@ var RemoteCardStore = class {
   invalidateFingerprint() {
     this.lastUpdateFingerprint = null;
   }
-  shouldNotifyForHass(hass) {
-    const nextFingerprint = this.updateFingerprint(hass);
+  shouldNotify() {
+    const nextFingerprint = this.updateFingerprint();
     if (nextFingerprint === this.lastUpdateFingerprint) return false;
     this.lastUpdateFingerprint = nextFingerprint;
     return true;
   }
-  updateFingerprint(hass = this._hass) {
+  updateFingerprint() {
     const entityId = String(this._config?.entity || "");
-    const remote = entityId ? hass?.states?.[entityId] : null;
+    const remote = entityId ? this.remoteState() : null;
     const attrs = remote?.attributes || {};
     const themeName = String(this._config?.theme || "");
-    const themes = hass?.themes;
+    const themes = this.hass?.themes;
     const themeDef = themeName ? themes?.themes?.[themeName] : null;
     const themeMode = themes?.darkMode ? "dark" : "light";
     const keymapEntry = this._deviceId != null ? this.deviceKeymaps[String(this._deviceId)] : null;
@@ -5445,15 +5901,16 @@ var RemoteCardStore = class {
       stableJsonSignature(themeDef),
       this._editMode ? "1" : "0",
       String(this.previewActivity ?? ""),
-      this.integrationDomain || "",
+      this.integration || "",
       this._mode,
       String(this._deviceId ?? ""),
-      keymapEntry ? `${keymapEntry.status}:${keymapEntry.buttons.length}:${keymapEntry.commands.length}` : ""
+      keymapEntry ? `${keymapEntry.status}:${keymapEntry.version ?? 0}:${keymapEntry.buttons.length}:${keymapEntry.commands.length}` : "",
+      stableJsonSignature(attrs?.keymap_versions)
     ].join("|");
   }
   // ---------- integration detection ----------
   async ensureIntegration() {
-    if (!this._hass?.callWS || !this._config?.entity) return;
+    if (!this._backend || !this._config?.entity) return;
     const entityId = String(this._config.entity);
     if (this.integrationEntityId && this.integrationEntityId !== entityId) {
       this.hubRequestCache = null;
@@ -5471,18 +5928,14 @@ var RemoteCardStore = class {
       this.commandFilter = "";
       this.initialViewApplied = false;
     }
-    if (this.integrationEntityId === entityId && this.integrationDomain) return;
+    if (this.integrationEntityId === entityId && this.integration) return;
     if (this.integrationDetectingFor === entityId) return;
     this.integrationDetectingFor = entityId;
     try {
-      const entry = await this._hass.callWS({
-        type: "config/entity_registry/get",
-        entity_id: entityId
-      });
-      this.integrationDomain = String(entry?.platform || "");
+      this.integration = await this._backend.probeIntegration();
       this.integrationEntityId = entityId;
     } catch (e6) {
-      this.integrationDomain = null;
+      this.integration = null;
       this.integrationEntityId = entityId;
     } finally {
       this.integrationDetectingFor = null;
@@ -5490,10 +5943,10 @@ var RemoteCardStore = class {
     }
   }
   isHubIntegration() {
-    return String(this.integrationDomain || "") === "sofabaton_hub";
+    return this.integration === "hub";
   }
   hubVersion() {
-    return hubVersionFor(this._hass, this._config?.entity);
+    return hubVersionFromState(this.remoteState());
   }
   isX2() {
     return isX2Hub(this.hubVersion(), this.isHubIntegration());
@@ -5524,7 +5977,7 @@ var RemoteCardStore = class {
    * user in one mode by design), never the mode itself.
    */
   deviceModeAvailable() {
-    if (String(this.integrationDomain || "") !== "sofabaton_x1s") return false;
+    if (this.integration !== "x1s") return false;
     if (!deviceModeEnabledInConfig(this._config)) return false;
     return this.devices().length > 0;
   }
@@ -5590,19 +6043,10 @@ var RemoteCardStore = class {
     return entry?.status === "ready" && entry.powerConfigured === true;
   }
   async fetchDevicePowerState(deviceId) {
-    if (!this._hass?.callWS) return null;
-    const entryId = String(
-      this.remoteState()?.attributes?.entry_id ?? ""
-    );
-    if (!entryId) return null;
+    const backend = this._backend;
+    if (!backend) return null;
     try {
-      const response = await this._hass.callWS({
-        type: "sofabaton_x1s/device/power_state",
-        entry_id: entryId,
-        device_id: deviceId
-      });
-      const raw = response?.power_state;
-      return raw === 1 ? 1 : raw === 0 ? 0 : null;
+      return await backend.devicePowerState(deviceId);
     } catch (_err) {
       return null;
     }
@@ -5617,7 +6061,8 @@ var RemoteCardStore = class {
    */
   async toggleDevicePower() {
     if (this._editMode || this.powerBusy) return;
-    if (!this._hass || !this._config?.entity) return;
+    const backend = this._backend;
+    if (!backend || !this._config?.entity) return;
     const deviceId = this._deviceId;
     if (deviceId == null || !this.devicePowerConfigured(deviceId)) return;
     this.powerBusy = true;
@@ -5632,10 +6077,8 @@ var RemoteCardStore = class {
       }
       if (state == null) return;
       const keyId = state === 1 ? POWER_OFF_KEY_ID : POWER_ON_KEY_ID;
-      const serviceData = remoteSendCommandData(this._config.entity, keyId, deviceId);
-      if (!serviceData) return;
       this.triggerCommandPulse();
-      await this.callService("remote", "send_command", serviceData);
+      await backend.sendCommand(keyId, deviceId);
       this._powerAssumption = {
         deviceId,
         state: state === 1 ? 0 : 1,
@@ -5657,27 +6100,47 @@ var RemoteCardStore = class {
    * fetch per device per card lifetime — the remote card never invalidates
    * cache (control panel owns cache management).
    */
+  /** The backend's version for a device's keymap (0 when it publishes none). */
+  keymapVersion(deviceId) {
+    const versions = this.remoteState()?.attributes?.keymap_versions;
+    return Number(versions?.[String(deviceId)] ?? 0) || 0;
+  }
+  /** True when a device's keymap must be (re)fetched: absent, or behind the backend's version. */
+  keymapStale(deviceId) {
+    const entry = this.deviceKeymaps[String(deviceId)];
+    if (!entry) return true;
+    if (entry.status === "loading") return false;
+    return (entry.version ?? 0) !== this.keymapVersion(deviceId);
+  }
   async ensureDeviceKeymap(deviceId) {
     const key = String(deviceId);
-    if (this.deviceKeymaps[key]) return;
-    if (!this._hass?.callWS) return;
-    const entryId = String(
-      this.remoteState()?.attributes?.entry_id ?? ""
-    );
-    if (!entryId) return;
-    this.deviceKeymaps[key] = { status: "loading", buttons: [], commands: [] };
+    if (!this.keymapStale(deviceId)) return;
+    const backend = this._backend;
+    if (!backend) return;
+    if (this.deviceKeymapFetching.has(key)) return;
+    const version = this.keymapVersion(deviceId);
+    const previous = this.deviceKeymaps[key];
+    if (!previous) {
+      this.deviceKeymaps[key] = { status: "loading", buttons: [], commands: [], version };
+    }
+    this.deviceKeymapFetching.add(key);
     try {
-      const response = await this._hass.callWS({
-        type: "sofabaton_x1s/device/keymap",
-        entry_id: entryId,
-        device_id: deviceId
-      });
+      const response = await backend.deviceKeymap(deviceId);
+      if (response === null) {
+        if (!previous) {
+          delete this.deviceKeymaps[key];
+          this.invalidateFingerprint();
+          this.onChange();
+        }
+        return;
+      }
       const keymap = response?.keymap;
       if (!keymap) {
         this.deviceKeymaps[key] = {
           status: "cache_miss",
           buttons: [],
-          commands: []
+          commands: [],
+          version
         };
       } else {
         const buttons = new Set(
@@ -5695,11 +6158,14 @@ var RemoteCardStore = class {
             command_id: Number(command?.command_id),
             name: String(command?.name ?? "")
           })).filter((command) => Number.isFinite(command.command_id) && command.name),
-          powerConfigured: keymap.power_configured === true
+          powerConfigured: keymap.power_configured === true,
+          version
         };
       }
     } catch (_err) {
-      this.deviceKeymaps[key] = { status: "error", buttons: [], commands: [] };
+      this.deviceKeymaps[key] = { status: "error", buttons: [], commands: [], version };
+    } finally {
+      this.deviceKeymapFetching.delete(key);
     }
     this.invalidateFingerprint();
     this.onChange();
@@ -5733,7 +6199,7 @@ var RemoteCardStore = class {
   }
   // ---------- basic state helpers ----------
   remoteState() {
-    return this._hass?.states?.[String(this._config?.entity ?? "")];
+    return this._backend?.snapshot();
   }
   currentActivityId() {
     return currentActivityIdFromRemote(this.remoteState());
@@ -5831,6 +6297,21 @@ var RemoteCardStore = class {
     if (!enabled.length) return true;
     return enabled.some((entry) => entry.command === Number(id));
   }
+  /**
+   * True when any of `ids` is bound on the current page. Unlike isEnabled
+   * this fails CLOSED without data: it gates an affordance (the number pad
+   * hint), not a key, so "unknown" must not render it.
+   */
+  anyKeyBound(ids) {
+    if (this._mode === "device") {
+      const entry = this.deviceKeymapState();
+      if (!entry || entry.status !== "ready") return false;
+      return ids.some((id) => entry.buttons.includes(id));
+    }
+    if (this.enabledButtonsInvalid) return false;
+    const enabled = this.enabledButtons();
+    return ids.some((id) => enabled.some((entry) => entry.command === id));
+  }
   commandTarget(id) {
     const enabled = this.enabledButtons();
     const match = enabled.find((entry) => entry.command === Number(id));
@@ -5849,7 +6330,7 @@ var RemoteCardStore = class {
   isLoadingActive() {
     const isActivityLoading = Boolean(this.activityLoadActive);
     const isPulse = this.commandPulseUntil && Date.now() < this.commandPulseUntil;
-    return isActivityLoading || Boolean(isPulse);
+    return isActivityLoading || Boolean(isPulse) || this.loadPending;
   }
   triggerCommandPulse() {
     this.commandPulseUntil = Date.now() + 1e3;
@@ -5893,7 +6374,7 @@ var RemoteCardStore = class {
   }
   hubEnqueueCommand(list, { priority = false, gapMs = 150 } = {}) {
     if (!this.isHubIntegration()) return;
-    if (!this._hass || !this._config?.entity) return;
+    if (!this._backend || !this._config?.entity) return;
     this.hubInitState();
     this.hubQueue = enqueueHubCommand(this.hubQueue, list, { priority, gapMs });
     this.hubDrainQueue().catch(() => {
@@ -5901,7 +6382,7 @@ var RemoteCardStore = class {
   }
   hubEnqueueRequest(list, requestKey) {
     if (!this.isHubIntegration()) return;
-    if (!this._hass || !this._config?.entity) return;
+    if (!this._backend || !this._config?.entity) return;
     this.hubInitState();
     if (requestKey && wasHubRequested(this.hubRequestSeen, requestKey)) return;
     if (requestKey) {
@@ -5911,7 +6392,7 @@ var RemoteCardStore = class {
   }
   async hubDrainQueue() {
     if (!this.isHubIntegration()) return;
-    if (!this._hass || !this._config?.entity) return;
+    if (!this._backend || !this._config?.entity) return;
     this.hubInitState();
     if (this.hubQueueBusy) return;
     this.hubQueueBusy = true;
@@ -5919,10 +6400,7 @@ var RemoteCardStore = class {
       while (this.hubQueue.length) {
         const next = this.hubQueue.shift();
         if (!next?.list) continue;
-        await this.callService("remote", "send_command", {
-          entity_id: this._config.entity,
-          command: next.list
-        });
+        await this._backend?.sendRawCommandList?.(next.list);
         const gap = Number.isFinite(Number(next?.gapMs)) ? Number(next.gapMs) : 750;
         await sleep(gap);
       }
@@ -5938,7 +6416,7 @@ var RemoteCardStore = class {
   async hubSendCommandList(list, throttleKey = null, minIntervalMs = 3e3) {
     if (this._editMode) return;
     if (!this.isHubIntegration()) return;
-    if (!this._hass || !this._config?.entity) return;
+    if (!this._backend || !this._config?.entity) return;
     this.hubInitState();
     if (throttleKey) {
       if (!this.hubThrottle(throttleKey, minIntervalMs)) return;
@@ -5947,10 +6425,7 @@ var RemoteCardStore = class {
       this.hubEnqueueCommand(list, { priority: true, gapMs: 150 });
       return;
     }
-    await this.callService("remote", "send_command", {
-      entity_id: this._config.entity,
-      command: list
-    });
+    await this._backend?.sendRawCommandList?.(list);
   }
   hubRequestBasicData() {
     const entityId = String(this._config?.entity || "");
@@ -5983,7 +6458,11 @@ var RemoteCardStore = class {
   }
   // ---------- actions ----------
   async callService(domain, service, data, target = void 0) {
-    await this._hass.callService(domain, service, data, target);
+    const backend = this._backend;
+    if (!backend?.callService) {
+      throw new TypeError("service calls are unavailable on this backend");
+    }
+    await backend.callService(domain, service, data, target);
   }
   async runLovelaceAction(actionConfig, context = null) {
     if (this._editMode) return;
@@ -6036,7 +6515,7 @@ var RemoteCardStore = class {
   }
   async sendCommand(commandId, deviceId = null) {
     if (this._editMode) return;
-    if (!this._hass || !this._config?.entity) return;
+    if (!this._backend || !this._config?.entity) return;
     const resolvedDevice = this._mode === "device" ? deviceId != null && Number.isFinite(Number(deviceId)) ? Number(deviceId) : this._deviceId : this.resolveCommandDeviceId(commandId, deviceId);
     if (this._mode === "device" && resolvedDevice == null) return;
     if (this.isHubIntegration()) {
@@ -6045,9 +6524,7 @@ var RemoteCardStore = class {
       await this.hubSendCommandList(command);
       return;
     }
-    const serviceData = remoteSendCommandData(this._config.entity, commandId, resolvedDevice);
-    if (!serviceData) return;
-    await this.callService("remote", "send_command", serviceData);
+    await this._backend.sendCommand(commandId, resolvedDevice);
   }
   /**
    * A button's hub long-press binding on one entity page, or null
@@ -6059,7 +6536,7 @@ var RemoteCardStore = class {
    * (it needs the key spec, not the button id).
    */
   longPressBindingForButton(buttonId, scopeId) {
-    if (String(this.integrationDomain || "") !== "sofabaton_x1s") return null;
+    if (this.integration !== "x1s") return null;
     const attrs = this.remoteState()?.attributes;
     return hubLongPressBinding(attrs, scopeId, buttonId);
   }
@@ -6076,23 +6553,17 @@ var RemoteCardStore = class {
    */
   async sendLongPress(buttonId, scopeId) {
     if (this._editMode) return;
-    if (!this._hass || !this._config?.entity) return;
+    if (!this._backend || !this._config?.entity) return;
     const binding = this.longPressBindingForButton(buttonId, scopeId);
     if (!binding) return;
-    const serviceData = remoteSendCommandData(
-      this._config.entity,
-      binding.command_id,
-      binding.device_id
-    );
-    if (!serviceData) return;
-    await this.callService("remote", "send_command", serviceData);
+    await this._backend.sendCommand(binding.command_id, binding.device_id);
   }
   async sendDrawerItem(itemType, commandId, deviceId, rawItem) {
     if (this._editMode) return;
     if (!this.isHubIntegration()) {
       return this.sendCommand(commandId, deviceId);
     }
-    if (!this._hass || !this._config?.entity) return;
+    if (!this._backend || !this._config?.entity) return;
     const activityId = Number(deviceId ?? this.currentActivityId());
     const keyId = Number(commandId);
     if (!Number.isFinite(keyId)) return;
@@ -6113,7 +6584,7 @@ var RemoteCardStore = class {
   }
   async sendCustomFavoriteCommand(commandId, deviceId) {
     if (this._editMode) return;
-    if (!this._hass || !this._config?.entity) return;
+    if (!this._backend || !this._config?.entity) return;
     const cmd = Number(commandId);
     const dev = Number(deviceId);
     if (!Number.isFinite(cmd) || !Number.isFinite(dev)) return;
@@ -6123,9 +6594,7 @@ var RemoteCardStore = class {
       await this.hubSendCommandList(command);
       return;
     }
-    const serviceData = remoteSendCommandData(this._config.entity, cmd, dev);
-    if (!serviceData) return;
-    await this.callService("remote", "send_command", serviceData);
+    await this._backend.sendCommand(cmd, dev);
   }
   async setActivity(option) {
     if (this._editMode) return;
@@ -6150,16 +6619,14 @@ var RemoteCardStore = class {
       await this.hubStartActivity(activityId);
       return;
     }
+    const backend = this._backend;
+    if (!backend) return;
     if (isPoweredOffLabel(selected)) {
-      await this.callService("remote", "turn_off", {
-        entity_id: this._config.entity
-      });
+      await backend.stopActivity();
       return;
     }
-    await this.callService("remote", "turn_on", {
-      entity_id: this._config.entity,
-      activity: selected
-    });
+    const target = this.activities().find((activity) => activity.name === selected);
+    await backend.startActivity({ id: target?.id ?? null, name: selected });
   }
   // ---------- runtime derivation (the state half of the legacy _update) ----------
   /**
@@ -6181,7 +6648,7 @@ var RemoteCardStore = class {
     const activityId = preview ? preview.activityId : this.currentActivityId();
     const deviceId = mode === "device" ? preview ? preview.deviceId ?? null : this._deviceId : null;
     const layoutConfig = mode === "device" ? layoutConfigForDevice(this._config, deviceId) : layoutConfigForActivity(this._config, activityId);
-    if (mode === "device" && deviceId != null && !this.deviceKeymapState(deviceId)) {
+    if (mode === "device" && deviceId != null && this.keymapStale(deviceId)) {
       void this.ensureDeviceKeymap(deviceId);
     }
     const keymapEntry = mode === "device" ? this.deviceKeymapState(deviceId) : null;
@@ -6231,6 +6698,8 @@ var RemoteCardStore = class {
       this.enabledButtonsInvalid = Array.isArray(rawAssignedKeys) && parsed.length === 0;
       this.enabledButtonsCache = parsed;
     }
+    const loadPending = mode !== "device" && !isUnavailable && !preview && loadState === "loading" && (activityId == null ? activities.length === 0 : rawAssignedKeys == null);
+    this.loadPending = loadPending;
     const pendingAge = this.pendingActivityAt ? Date.now() - this.pendingActivityAt : null;
     const pendingExpired = pendingAge != null && pendingAge > 15e3;
     let selectState = null;
@@ -6290,6 +6759,7 @@ var RemoteCardStore = class {
       deviceId,
       keymapEntry,
       keymapLoading: keymapEntry?.status === "loading",
+      loadPending,
       commands,
       commandFilter: this.commandFilter,
       showCommandsButton: commandsButtonEnabled(layoutConfig),
@@ -6321,7 +6791,7 @@ var RemoteCardStore = class {
   }
 };
 
-// custom_components/sofabaton_x1s/www/src/remote-card-assist-yaml.ts
+// remote-card/src/remote-card-assist-yaml.ts
 function automationAssistRemoteYaml(capture, entityId, hubIntegration) {
   if (!capture || !entityId) return "";
   const kind = capture.kind || "button";
@@ -6438,7 +6908,7 @@ function automationAssistNotificationBody(capture, entityId, hubIntegration, fal
   ].join("\n");
 }
 
-// custom_components/sofabaton_x1s/www/src/state/automation-assist-controller.ts
+// remote-card/src/state/automation-assist-controller.ts
 function normalizeHubMac(value) {
   if (!value) return null;
   const normalized = String(value).replace(/[^a-fA-F0-9]/g, "").toUpperCase();
@@ -7145,7 +7615,7 @@ var AutomationAssistController = class {
   }
 };
 
-// custom_components/sofabaton_x1s/www/src/sections/wire.ts
+// remote-card/src/sections/wire.ts
 function primaryActionRef(handler) {
   return n6((el) => {
     if (!el) return;
@@ -7180,7 +7650,7 @@ function listenersRef(wire) {
   });
 }
 
-// custom_components/sofabaton_x1s/www/src/sections/activity-row.ts
+// remote-card/src/sections/activity-row.ts
 function renderActivityRow(params) {
   const itemTag = s4(selectItemTagName());
   const options = params.unavailable ? [] : params.options;
@@ -7246,7 +7716,7 @@ function renderActivityRow(params) {
   `;
 }
 
-// custom_components/sofabaton_x1s/www/src/components/sb-key-button.ts
+// remote-card/src/components/sb-key-button.ts
 var CONTROL_CSS = `
   :host {
     display: block;
@@ -7617,7 +8087,7 @@ if (!customElements.get("sb-key-button")) {
   customElements.define("sb-key-button", SbKeyButton);
 }
 
-// custom_components/sofabaton_x1s/www/src/sections/key-groups.ts
+// remote-card/src/sections/key-groups.ts
 var X2_ONLY_KEY_IDS = /* @__PURE__ */ new Set([
   ID.C,
   ID.B,
@@ -7625,7 +8095,8 @@ var X2_ONLY_KEY_IDS = /* @__PURE__ */ new Set([
   ID.EXIT,
   ID.DVR,
   ID.PLAY,
-  ID.GUIDE
+  ID.GUIDE,
+  ...NUMPAD_KEY_IDS
 ]);
 var DPAD_KEYS = [
   { key: "up", id: ID.UP, cmd: ID.UP, label: "", icon: "mdi:chevron-up", extraClass: "area-up" },
@@ -7635,6 +8106,20 @@ var DPAD_KEYS = [
   { key: "ok", id: ID.OK, cmd: ID.OK, label: "", icon: "mdi:circle", extraClass: "area-ok okKey", size: "big" },
   { key: "right", id: ID.RIGHT, cmd: ID.RIGHT, label: "", icon: "mdi:chevron-right", extraClass: "area-right" },
   { key: "down", id: ID.DOWN, cmd: ID.DOWN, label: "", icon: "mdi:chevron-down", extraClass: "area-down" }
+];
+var NUMPAD_KEYS = [
+  { key: "num1", id: ID.NUM_1, cmd: ID.NUM_1, label: "1", icon: "", size: "small" },
+  { key: "num2", id: ID.NUM_2, cmd: ID.NUM_2, label: "2", icon: "", size: "small" },
+  { key: "num3", id: ID.NUM_3, cmd: ID.NUM_3, label: "3", icon: "", size: "small" },
+  { key: "num4", id: ID.NUM_4, cmd: ID.NUM_4, label: "4", icon: "", size: "small" },
+  { key: "num5", id: ID.NUM_5, cmd: ID.NUM_5, label: "5", icon: "", size: "small" },
+  { key: "num6", id: ID.NUM_6, cmd: ID.NUM_6, label: "6", icon: "", size: "small" },
+  { key: "num7", id: ID.NUM_7, cmd: ID.NUM_7, label: "7", icon: "", size: "small" },
+  { key: "num8", id: ID.NUM_8, cmd: ID.NUM_8, label: "8", icon: "", size: "small" },
+  { key: "num9", id: ID.NUM_9, cmd: ID.NUM_9, label: "9", icon: "", size: "small" },
+  { key: "numdash", id: ID.NUM_DASH, cmd: ID.NUM_DASH, label: "-", icon: "", size: "small" },
+  { key: "num0", id: ID.NUM_0, cmd: ID.NUM_0, label: "0", icon: "", size: "small" },
+  { key: "numenter", id: ID.NUM_ENTER, cmd: ID.NUM_ENTER, label: "E", icon: "", size: "small" }
 ];
 var NAV_KEYS = [
   { key: "back", id: ID.BACK, cmd: ID.BACK, label: "", icon: "mdi:arrow-u-left-top" },
@@ -7698,9 +8183,45 @@ function renderKey(params, spec) {
     ></sb-key-button>
   `;
 }
-function renderDpad(params, visible) {
-  if (!visible) return A;
-  return b2`<div class="dpad">${DPAD_KEYS.map((k2) => renderKey(params, k2))}</div>`;
+function renderDpad(params, visible, numpad = null) {
+  const ready = Boolean(numpad?.available);
+  if (!visible) {
+    if (!ready) return A;
+    return b2`
+      <div class="dpad dpad--numpad-only" ${numpad?.hostRef ? n6(numpad.hostRef) : A}>
+        <div class="dpad-face dpad-face--numpad">
+          ${NUMPAD_KEYS.map((k2) => renderKey(params, k2))}
+        </div>
+      </div>
+    `;
+  }
+  const open = ready && Boolean(numpad?.open);
+  const className = [
+    "dpad",
+    ready ? "dpad--numpad-ready" : "",
+    open ? "dpad--numpad-open" : ""
+  ].filter(Boolean).join(" ");
+  return b2`
+    <div class=${className} ${numpad?.hostRef ? n6(numpad.hostRef) : A}>
+      <div class="dpad-face dpad-face--keys" ?inert=${open}>
+        ${DPAD_KEYS.map((k2) => renderKey(params, k2))}
+      </div>
+      ${ready ? b2`
+            <div class="dpad-face dpad-face--numpad" ?inert=${!open}>
+              ${NUMPAD_KEYS.map((k2) => renderKey(params, k2))}
+            </div>
+            <button
+              type="button"
+              class="dpad-numpad-toggle"
+              aria-label=${str().editor.numpad}
+              ?inert=${open}
+              @click=${() => numpad.onOpen()}
+            >
+              <ha-icon icon="mdi:dialpad" aria-hidden="true"></ha-icon>
+            </button>
+          ` : A}
+    </div>
+  `;
 }
 function renderNavRow(params, visible) {
   if (!visible) return A;
@@ -7779,7 +8300,7 @@ function renderAbc(params, visible) {
   `;
 }
 
-// custom_components/sofabaton_x1s/www/src/remote-card-render-models.ts
+// remote-card/src/remote-card-render-models.ts
 function drawerCommandType(type) {
   if (type === "macros") return "macro";
   if (type === "favorites") return "favorite";
@@ -7807,12 +8328,16 @@ function customFavoriteButtonModel(favorite, fallbackDeviceId) {
   };
 }
 
-// custom_components/sofabaton_x1s/www/src/sections/macro-favorites.ts
+// remote-card/src/sections/macro-favorites.ts
+function deviceBand(name) {
+  return name ? b2`<div class="drawer-btn__device" title=${name}>${name}</div>` : A;
+}
 function renderDrawerButton(params, item, type) {
   const model = drawerButtonModel(item, type, params.currentActivityId);
+  const deviceName = type === "favorites" && params.favoriteDeviceName && Number.isFinite(model.deviceId) ? params.favoriteDeviceName(model.deviceId) : "";
   return b2`
     <ha-card
-      class="drawer-btn"
+      class="drawer-btn${deviceName ? " drawer-btn--banded" : ""}"
       role="button"
       tabindex="0"
       ${primaryActionRef(() => {
@@ -7820,6 +8345,7 @@ function renderDrawerButton(params, item, type) {
     params.onDrawerItem({ model, itemType: type, rawItem: item });
   })}
     >
+      ${deviceBand(deviceName)}
       <div class="drawer-btn__inner drawer-btn__inner--stack">
         ${model.icon ? b2`<ha-icon class="drawer-btn__icon" icon=${model.icon}></ha-icon>` : A}
         <div class="name">${model.label}</div>
@@ -7829,14 +8355,16 @@ function renderDrawerButton(params, item, type) {
 }
 function renderCustomFavoriteButton(params, favorite) {
   const model = customFavoriteButtonModel(favorite, params.currentActivityId);
+  const deviceName = params.favoriteDeviceName && !model.action && favorite.device_id != null ? params.favoriteDeviceName(model.deviceId) : "";
   return b2`
     <ha-card
-      class="drawer-btn drawer-btn--custom"
+      class="drawer-btn drawer-btn--custom${deviceName ? " drawer-btn--banded" : ""}"
       role="button"
       tabindex="0"
       style="grid-column: 1 / -1;"
       ${primaryActionRef(() => params.onCustomFavorite({ model, rawFavorite: favorite }))}
     >
+      ${deviceBand(deviceName)}
       <div class="drawer-btn__inner drawer-btn__inner--row">
         ${model.icon ? b2`<ha-icon class="drawer-btn__icon" icon=${model.icon}></ha-icon>` : A}
         <div class="name">${model.label}</div>
@@ -8103,7 +8631,7 @@ function renderCommandsDrawer(params) {
   `;
 }
 
-// custom_components/sofabaton_x1s/www/src/sections/assist.ts
+// remote-card/src/sections/assist.ts
 function renderAssistRow(params) {
   return b2`
     <div
@@ -8201,7 +8729,7 @@ function renderAssistModal(params) {
   `;
 }
 
-// custom_components/sofabaton_x1s/www/src/remote-card-element.ts
+// remote-card/src/remote-card-element.ts
 function hexToRgbTriplet(value) {
   const hex = value.trim().slice(1);
   const full = hex.length === 3 ? hex.split("").map((c7) => c7 + c7).join("") : hex;
@@ -8215,6 +8743,11 @@ var SofabatonRemoteCard = class extends i4 {
     this._editMode = false;
     // Imperative-edge state (mirrors the legacy fields)
     this._drawerUp = false;
+    // Number pad face behind the D-pad (docs/internal/numpad-plan.md §2.4):
+    // transient, never saved; reset on any page change or when the gate
+    // stops passing.
+    this._numpadOpen = false;
+    this._numpadPageKey = null;
     this._drawerResetTimer = null;
     this._drawerContentResetTimer = null;
     this._closingDrawer = null;
@@ -8242,6 +8775,7 @@ var SofabatonRemoteCard = class extends i4 {
     this._activityRowRef = e5();
     this._loadIndicatorRef = e5();
     this._mfContainerRef = e5();
+    this._dpadRef = e5();
     this._macrosOverlayRef = e5();
     this._favoritesOverlayRef = e5();
     this._commandsOverlayRef = e5();
@@ -8293,11 +8827,22 @@ var SofabatonRemoteCard = class extends i4 {
   }
   set hass(hass) {
     const language = hass?.locale?.language ?? hass?.language;
+    this.setLanguage(language);
+    this._store.setHass(hass);
+  }
+  /** Switch the card's language (HA: from hass.locale; the web remote: from the page). */
+  setLanguage(language) {
     const languageChanged = setRemoteCardLanguage(language);
     this.lang = remoteCardLanguage();
     this.dir = remoteCardDirection();
-    this._store.setHass(hass);
     if (languageChanged) this.requestUpdate();
+  }
+  /**
+   * Install any RemoteBackend (docs/internal/web-remote-plan.md): the web
+   * remote's server adapter. HA dashboards never call this; they set hass.
+   */
+  setBackend(backend) {
+    this._store.setBackend(backend);
   }
   get hass() {
     return this._store.hass;
@@ -8377,6 +8922,13 @@ var SofabatonRemoteCard = class extends i4 {
         const clickedInToggleRow = this._macroFavoritesRowRef.value && path.includes(this._macroFavoritesRowRef.value);
         if (!(clickedInOverlay || clickedInToggleRow)) {
           this._setActiveDrawer(null);
+        }
+      }
+      if (this._numpadOpen) {
+        const dpad = this._dpadRef.value;
+        if (!(dpad && path.includes(dpad))) {
+          this._numpadOpen = false;
+          this.requestUpdate();
         }
       }
       if (this._store.activityMenuOpen) {
@@ -8534,10 +9086,17 @@ var SofabatonRemoteCard = class extends i4 {
     const deviceId = String(value) === "" ? null : Number(value);
     this._store.setDevice(Number.isFinite(deviceId) ? deviceId : null);
   }
+  _openNumpad() {
+    if (this._numpadOpen) return;
+    this._numpadOpen = true;
+    this._fireEvent("haptic", "light");
+    this.requestUpdate();
+  }
   _handleModeToggle() {
     if (this._editMode) return;
     this._fireEvent("haptic", "light");
     this._setActiveDrawer(null);
+    this._numpadOpen = false;
     this._store.toggleMode();
   }
   _syncLoadIndicator() {
@@ -8550,10 +9109,10 @@ var SofabatonRemoteCard = class extends i4 {
   _applyLocalTheme(themeName) {
     const root = this._cardRef.value;
     const hass = this._store.hass;
-    if (!root || !hass) return false;
+    if (!root) return false;
     const bgOverrideCss = rgbToCss(this._store.config?.background_override);
-    const themeDef = themeName ? hass.themes?.themes?.[themeName] : null;
-    const themeMode = hass.themes?.darkMode ? "dark" : "light";
+    const themeDef = themeName ? hass?.themes?.themes?.[themeName] : null;
+    const themeMode = hass?.themes?.darkMode ? "dark" : "light";
     const appliedKey = `${themeName || ""}||${bgOverrideCss}||${themeMode}||${JSON.stringify(themeDef ?? null)}`;
     if (this._appliedThemeKey === appliedKey) return false;
     for (const cssVar of this._appliedThemeVars) {
@@ -8569,7 +9128,7 @@ var SofabatonRemoteCard = class extends i4 {
         vars = def;
         const defWithModes = def;
         if (defWithModes.modes && typeof defWithModes.modes === "object") {
-          const mode = hass.themes?.darkMode ? "dark" : "light";
+          const mode = hass?.themes?.darkMode ? "dark" : "light";
           vars = { ...def, ...defWithModes.modes?.[mode] || {} };
           delete vars.modes;
         }
@@ -8688,7 +9247,7 @@ var SofabatonRemoteCard = class extends i4 {
     }
     if (this._layoutSignatureCache === nextSignature) return;
     this._layoutSignatureCache = nextSignature;
-    if (this._prefersReducedMotion()) {
+    if (this._store.backend?.kind === "server" || this._prefersReducedMotion()) {
       this._clearLayoutOverlay();
       return;
     }
@@ -8726,7 +9285,7 @@ var SofabatonRemoteCard = class extends i4 {
   }
   // ---------- render ----------
   render() {
-    if (!this._haElementsReady || !this._store.config || !this._store.hass) {
+    if (!this._haElementsReady || !this._store.config || !this._store.backend) {
       return A;
     }
     const store = this._store;
@@ -8754,7 +9313,7 @@ var SofabatonRemoteCard = class extends i4 {
     const commandsVisible = deviceMode && derived.showCommandsButton;
     const showCommandsDrawer = commandsVisible && !asRows;
     const commandsAsRow = commandsVisible && asRows;
-    const disableAll = deviceMode ? derived.isUnavailable || !this._editMode && derived.deviceId == null : derived.isUnavailable || store.activityLoadingActive() || !this._editMode && derived.isPoweredOff;
+    const disableAll = deviceMode ? derived.isUnavailable || !this._editMode && derived.deviceId == null : derived.isUnavailable || store.activityLoadingActive() || derived.loadPending || !this._editMode && derived.isPoweredOff;
     if (deviceMode && (store.activeDrawer === "macros" || store.activeDrawer === "favorites") || !deviceMode && store.activeDrawer === "commands") {
       this._retainClosingDrawer(store.activeDrawer);
       this._scheduleDrawerDirectionReset();
@@ -8788,6 +9347,12 @@ var SofabatonRemoteCard = class extends i4 {
       this._drawerMeasureSignature = drawerMeasureSignature;
       this._drawerMeasurePending = Boolean(store.activeDrawer);
     }
+    const numpadAvailable = derived.isX2 && !store.isHubIntegration() && numpadEnabled(layoutConfig) && (this._editMode || store.anyKeyBound(NUMPAD_KEY_IDS));
+    const numpadPageKey = `${derived.mode}:${deviceMode ? derived.deviceId ?? "" : derived.activityId ?? ""}`;
+    if (!numpadAvailable || numpadPageKey !== this._numpadPageKey) {
+      this._numpadOpen = false;
+    }
+    this._numpadPageKey = numpadPageKey;
     const keyParams = {
       isX2: derived.isX2,
       buttonVisibility: runtimeButtonVisibility({
@@ -8826,6 +9391,7 @@ var SofabatonRemoteCard = class extends i4 {
       favorites: derived.favorites,
       customFavorites: derived.customFavorites,
       currentActivityId: store.currentActivityId(),
+      favoriteDeviceName: favoriteDeviceNamesEnabled(layoutConfig) ? (deviceId) => store.deviceNameForId(deviceId) ?? "" : null,
       renderMacrosContent: store.activeDrawer === "macros" || this._closingDrawer === "macros",
       renderFavoritesContent: store.activeDrawer === "favorites" || this._closingDrawer === "favorites",
       containerRef: this._mfContainerRef,
@@ -8982,7 +9548,12 @@ var SofabatonRemoteCard = class extends i4 {
         itemCount: derived.customFavorites.length + derived.favorites.length,
         emptyText: str().card.noFavorites
       }) : A,
-      dpad: () => renderDpad(keyParams, Boolean(layoutConfig.show_dpad)),
+      dpad: () => renderDpad(keyParams, Boolean(layoutConfig.show_dpad), {
+        available: numpadAvailable,
+        open: this._numpadOpen,
+        hostRef: this._dpadRef,
+        onOpen: () => this._openNumpad()
+      }),
       nav: () => renderNavRow(keyParams, Boolean(layoutConfig.show_nav)),
       mid: () => renderMid(keyParams, midEnabled),
       media: () => renderMedia(keyParams, mediaEnabled),
@@ -8998,7 +9569,8 @@ var SofabatonRemoteCard = class extends i4 {
         shortcutsVisible
       )
     };
-    const warnText = derived.isUnavailable ? str().card.remoteUnavailable : derived.noActivitiesMessage;
+    const noticeText = derived.isUnavailable ? str().card.remoteUnavailable : derived.noActivitiesMessage;
+    const noticeTone = deviceMode && !derived.isUnavailable && derived.keymapEntry?.status === "error" ? "error" : "warning";
     const assistEnabled = store.automationAssistEnabled();
     return b2`
       <ha-card ${n6(this._cardRef)}>
@@ -9006,14 +9578,21 @@ var SofabatonRemoteCard = class extends i4 {
         <div class=${wrapClass} ${n6(this._wrapRef)}>
           ${assistEnabled ? renderAssistRow({ visible: true, controller: this._assist }) : A}
           <div class="layout-container" ${n6(this._layoutContainerRef)}>
+            ${noticeText ? b2`<div
+                  class="sb-notice sb-notice--${noticeTone}"
+                  role="status"
+                  aria-live="polite"
+                >
+                  <ha-icon
+                    icon=${noticeTone === "error" ? "mdi:alert-circle-outline" : "mdi:alert-outline"}
+                  ></ha-icon>
+                  <span class="sb-notice__text">${noticeText}</span>
+                </div>` : A}
             ${c6(
       order.filter((key) => key in groupTemplates),
       (key) => key,
       (key) => groupTemplates[key]()
     )}
-            <div class="warn" style=${warnText ? "display: block;" : "display: none;"}>
-              ${warnText}
-            </div>
           </div>
         </div>
       </ha-card>
@@ -9115,7 +9694,7 @@ SofabatonRemoteCard.styles = [
     `
 ];
 
-// custom_components/sofabaton_x1s/www/src/remote-card-translations/ar.ts
+// remote-card/src/remote-card-translations/ar.ts
 var isolate = (value) => `\u2068${value}\u2069`;
 var SOFABATON = isolate("Sofabaton");
 var MQTT = isolate("MQTT");
@@ -9247,6 +9826,8 @@ var REMOTE_CARD_STRINGS_AR = {
     openOnCurrentActivity: "\u0627\u0644\u0646\u0634\u0627\u0637 \u0627\u0644\u062D\u0627\u0644\u064A",
     macrosFavoritesAsRows: "\u0639\u0631\u0636 \u0648\u062D\u062F\u0627\u062A \u0627\u0644\u0645\u0627\u0643\u0631\u0648 \u0648\u0627\u0644\u0645\u0641\u0636\u0644\u0627\u062A \u0641\u064A \u0635\u0641\u0648\u0641",
     commandsAsRows: "\u0639\u0631\u0636 \u0627\u0644\u0623\u0648\u0627\u0645\u0631 \u0641\u064A \u0635\u0641\u0648\u0641",
+    favoriteDeviceNames: "\u0625\u0638\u0647\u0627\u0631 \u0623\u0633\u0645\u0627\u0621 \u0627\u0644\u0623\u062C\u0647\u0632\u0629",
+    rowOptions: (groupLabel2) => `\u062E\u064A\u0627\u0631\u0627\u062A ${groupLabel2}`,
     visibleRows: "\u0627\u0644\u0635\u0641\u0648\u0641 \u0627\u0644\u0645\u0631\u0626\u064A\u0629",
     moveGroupUp: (groupLabel2) => `\u0646\u0642\u0644 ${isolate(groupLabel2)} \u0625\u0644\u0649 \u0627\u0644\u0623\u0639\u0644\u0649`,
     moveGroupDown: (groupLabel2) => `\u0646\u0642\u0644 ${isolate(groupLabel2)} \u0625\u0644\u0649 \u0627\u0644\u0623\u0633\u0641\u0644`,
@@ -9256,6 +9837,7 @@ var REMOTE_CARD_STRINGS_AR = {
     channel: "\u0627\u0644\u0642\u0646\u0627\u0629",
     mediaControls: "\u0627\u0644\u062A\u0634\u063A\u064A\u0644",
     dvr: DVR,
+    numpad: "\u0644\u0648\u062D\u0629 \u0627\u0644\u0623\u0631\u0642\u0627\u0645",
     resetDefaultLayout: "\u0625\u0639\u0627\u062F\u0629 \u0636\u0628\u0637 \u0627\u0644\u062A\u062E\u0637\u064A\u0637",
     shortcutSlotLeft: "\u0627\u0644\u0627\u062E\u062A\u0635\u0627\u0631 \u0627\u0644\u0623\u064A\u0633\u0631",
     shortcutSlotMiddle: "\u0627\u0644\u0627\u062E\u062A\u0635\u0627\u0631 \u0627\u0644\u0623\u0648\u0633\u0637",
@@ -9314,12 +9896,24 @@ var REMOTE_CARD_STRINGS_AR = {
     blue: "\u0623\u0632\u0631\u0642",
     a: "A",
     b: "B",
-    c: "C"
+    c: "C",
+    num0: "0",
+    num1: "1",
+    num2: "2",
+    num3: "3",
+    num4: "4",
+    num5: "5",
+    num6: "6",
+    num7: "7",
+    num8: "8",
+    num9: "9",
+    numdash: "-",
+    numenter: "\u0625\u062F\u062E\u0627\u0644"
   }
 };
 registerRemoteCardTranslation("ar", REMOTE_CARD_STRINGS_AR);
 
-// custom_components/sofabaton_x1s/www/src/remote-card-translations/en-gb.ts
+// remote-card/src/remote-card-translations/en-gb.ts
 registerRemoteCardTranslation("en-gb", {
   card: {
     favoritesTab: "Favourites",
@@ -9341,12 +9935,12 @@ registerRemoteCardTranslation("en-gb", {
   }
 });
 
-// custom_components/sofabaton_x1s/www/src/remote-card-translations/de.ts
+// remote-card/src/remote-card-translations/de.ts
 var REMOTE_CARD_STRINGS_DE = {
   card: {
-    selectEntityError: "W\xE4hle eine Sofabaton-Fernbedienungsentit\xE4t aus",
-    remoteUnavailable: "Die Fernbedienung ist nicht verf\xFCgbar (m\xF6glicherweise ist die Sofabaton-App verbunden).",
-    noActivitiesWarning: "Keine Aktivit\xE4ten in den Attributen der Fernbedienung gefunden.",
+    selectEntityError: "W\xE4hle eine Sofabaton-Fernsteuerungsentit\xE4t aus",
+    remoteUnavailable: "Die Fernsteuerung ist nicht verf\xFCgbar (m\xF6glicherweise ist die Sofabaton-App verbunden).",
+    noActivitiesWarning: "Keine Aktivit\xE4ten in den Attributen der Fernsteuerung gefunden.",
     noMacros: "Keine Makros verf\xFCgbar",
     noFavorites: "Keine Favoriten verf\xFCgbar",
     noCommands: "Keine Befehle verf\xFCgbar",
@@ -9417,7 +10011,7 @@ var REMOTE_CARD_STRINGS_DE = {
   },
   editor: {
     fieldLabels: {
-      entity: "Sofabaton-Fernbedienungsentit\xE4t ausw\xE4hlen",
+      entity: "Sofabaton-Fernsteuerungsentit\xE4t ausw\xE4hlen",
       theme: "Theme auf die Karte anwenden",
       use_background_override: "Hintergrundfarbe anpassen",
       background_override: "Hintergrundfarbe ausw\xE4hlen",
@@ -9463,6 +10057,8 @@ var REMOTE_CARD_STRINGS_DE = {
     openOnCurrentActivity: "Aktuelle Aktivit\xE4t",
     macrosFavoritesAsRows: "Makros/Favoriten als Zeilen",
     commandsAsRows: "Befehle als Zeilen",
+    favoriteDeviceNames: "Ger\xE4tenamen anzeigen",
+    rowOptions: (groupLabel2) => `Optionen f\xFCr ${groupLabel2}`,
     visibleRows: "Sichtbare Zeilen",
     moveGroupUp: (groupLabel2) => `${groupLabel2} nach oben verschieben`,
     moveGroupDown: (groupLabel2) => `${groupLabel2} nach unten verschieben`,
@@ -9472,6 +10068,7 @@ var REMOTE_CARD_STRINGS_DE = {
     channel: "Kanal",
     mediaControls: "Wiedergabe",
     dvr: "DVR",
+    numpad: "Ziffernblock",
     resetDefaultLayout: "Layout zur\xFCcksetzen",
     shortcutSlotLeft: "Linke Verkn\xFCpfung",
     shortcutSlotMiddle: "Mittlere Verkn\xFCpfung",
@@ -9530,18 +10127,30 @@ var REMOTE_CARD_STRINGS_DE = {
     blue: "Blau",
     a: "A",
     b: "B",
-    c: "C"
+    c: "C",
+    num0: "0",
+    num1: "1",
+    num2: "2",
+    num3: "3",
+    num4: "4",
+    num5: "5",
+    num6: "6",
+    num7: "7",
+    num8: "8",
+    num9: "9",
+    numdash: "-",
+    numenter: "Enter"
   }
 };
 registerRemoteCardTranslation("de", REMOTE_CARD_STRINGS_DE);
 
-// custom_components/sofabaton_x1s/www/src/remote-card-translations/es.ts
+// remote-card/src/remote-card-translations/es.ts
 var plural = (count, singular, pluralForm = `${singular}s`) => count === 1 ? singular : pluralForm;
 var REMOTE_CARD_STRINGS_ES = {
   card: {
-    selectEntityError: "Selecciona una entidad de control remoto Sofabaton",
-    remoteUnavailable: "El control remoto no est\xE1 disponible (posiblemente porque la aplicaci\xF3n Sofabaton est\xE1 conectada).",
-    noActivitiesWarning: "No se encontraron actividades en los atributos del control remoto.",
+    selectEntityError: "Selecciona una entidad de mando a distancia Sofabaton",
+    remoteUnavailable: "El mando a distancia no est\xE1 disponible (posiblemente porque la aplicaci\xF3n Sofabaton est\xE1 conectada).",
+    noActivitiesWarning: "No se encontraron actividades en los atributos del mando a distancia.",
     noMacros: "No hay macros disponibles",
     noFavorites: "No hay favoritos disponibles",
     noCommands: "No hay comandos disponibles",
@@ -9562,8 +10171,8 @@ var REMOTE_CARD_STRINGS_ES = {
     defaultLayout: "Dise\xF1o predeterminado de actividades",
     activityFallback: (id) => `Actividad ${id}`,
     deviceFallback: (id) => `Dispositivo ${id}`,
-    pickerName: "Control remoto virtual Sofabaton",
-    pickerDescription: "Un control remoto configurable para la integraci\xF3n Sofabaton X1, X1S y X2."
+    pickerName: "Mando a distancia virtual Sofabaton",
+    pickerDescription: "Un mando a distancia configurable para la integraci\xF3n Sofabaton X1, X1S y X2."
   },
   assist: {
     label: "Captura de botones",
@@ -9612,7 +10221,7 @@ var REMOTE_CARD_STRINGS_ES = {
   },
   editor: {
     fieldLabels: {
-      entity: "Seleccionar una entidad de control remoto Sofabaton",
+      entity: "Seleccionar una entidad de mando a distancia Sofabaton",
       theme: "Aplicar un tema a la tarjeta",
       use_background_override: "Personalizar el color de fondo",
       background_override: "Seleccionar el color de fondo",
@@ -9650,7 +10259,7 @@ var REMOTE_CARD_STRINGS_ES = {
     modeToggle: "Bot\xF3n de modo",
     deviceModeDescription: "Controla un \xFAnico dispositivo configurado en el hub mediante sus asignaciones de botones y su lista completa de comandos.",
     longPress: "Activar la repetici\xF3n al mantener pulsado un bot\xF3n",
-    longPressDescription: "Mant\xE9n pulsado un bot\xF3n seleccionado para enviar su comando repetidamente, como en el mando f\xEDsico.",
+    longPressDescription: "Mant\xE9n pulsado un bot\xF3n seleccionado para enviar su comando repetidamente, como en el mando a distancia f\xEDsico.",
     longPressButtons: "Botones",
     enableDeviceMode: "Activar el modo de dispositivo",
     initialView: "Vista inicial",
@@ -9658,6 +10267,8 @@ var REMOTE_CARD_STRINGS_ES = {
     openOnCurrentActivity: "Actividad actual",
     macrosFavoritesAsRows: "Macros/favoritos como filas",
     commandsAsRows: "Comandos como filas",
+    favoriteDeviceNames: "Mostrar nombres de dispositivos",
+    rowOptions: (groupLabel2) => `Opciones de ${groupLabel2}`,
     visibleRows: "Filas visibles",
     moveGroupUp: (groupLabel2) => `Mover ${groupLabel2} hacia arriba`,
     moveGroupDown: (groupLabel2) => `Mover ${groupLabel2} hacia abajo`,
@@ -9667,6 +10278,7 @@ var REMOTE_CARD_STRINGS_ES = {
     channel: "Canal",
     mediaControls: "Reproducci\xF3n",
     dvr: "DVR",
+    numpad: "Teclado num\xE9rico",
     resetDefaultLayout: "Restablecer dise\xF1o",
     shortcutSlotLeft: "Acceso directo izquierdo",
     shortcutSlotMiddle: "Acceso directo central",
@@ -9725,12 +10337,24 @@ var REMOTE_CARD_STRINGS_ES = {
     blue: "Azul",
     a: "A",
     b: "B",
-    c: "C"
+    c: "C",
+    num0: "0",
+    num1: "1",
+    num2: "2",
+    num3: "3",
+    num4: "4",
+    num5: "5",
+    num6: "6",
+    num7: "7",
+    num8: "8",
+    num9: "9",
+    numdash: "-",
+    numenter: "Intro"
   }
 };
 registerRemoteCardTranslation("es", REMOTE_CARD_STRINGS_ES);
 
-// custom_components/sofabaton_x1s/www/src/remote-card-translations/fr.ts
+// remote-card/src/remote-card-translations/fr.ts
 var plural2 = (count, singular, pluralForm = `${singular}s`) => count > 1 ? pluralForm : singular;
 var REMOTE_CARD_STRINGS_FR = {
   card: {
@@ -9853,6 +10477,8 @@ var REMOTE_CARD_STRINGS_FR = {
     openOnCurrentActivity: "Activit\xE9 en cours",
     macrosFavoritesAsRows: "Macros/favoris sous forme de lignes",
     commandsAsRows: "Commandes sous forme de lignes",
+    favoriteDeviceNames: "Afficher les noms des appareils",
+    rowOptions: (groupLabel2) => `Options de ${groupLabel2}`,
     visibleRows: "Lignes visibles",
     moveGroupUp: (groupLabel2) => `D\xE9placer ${groupLabel2} vers le haut`,
     moveGroupDown: (groupLabel2) => `D\xE9placer ${groupLabel2} vers le bas`,
@@ -9862,6 +10488,7 @@ var REMOTE_CARD_STRINGS_FR = {
     channel: "Cha\xEEne",
     mediaControls: "Lecture",
     dvr: "DVR",
+    numpad: "Pav\xE9 num\xE9rique",
     resetDefaultLayout: "R\xE9initialiser",
     shortcutSlotLeft: "Raccourci gauche",
     shortcutSlotMiddle: "Raccourci central",
@@ -9920,17 +10547,29 @@ var REMOTE_CARD_STRINGS_FR = {
     blue: "Bleu",
     a: "A",
     b: "B",
-    c: "C"
+    c: "C",
+    num0: "0",
+    num1: "1",
+    num2: "2",
+    num3: "3",
+    num4: "4",
+    num5: "5",
+    num6: "6",
+    num7: "7",
+    num8: "8",
+    num9: "9",
+    numdash: "-",
+    numenter: "Entr\xE9e"
   }
 };
 registerRemoteCardTranslation("fr", REMOTE_CARD_STRINGS_FR);
 
-// custom_components/sofabaton_x1s/www/src/remote-card-translations/nl.ts
+// remote-card/src/remote-card-translations/nl.ts
 var REMOTE_CARD_STRINGS_NL = {
   card: {
-    selectEntityError: "Selecteer een Sofabaton remote-entiteit",
-    remoteUnavailable: "De remote is niet beschikbaar (mogelijk omdat de Sofabaton-app verbonden is).",
-    noActivitiesWarning: "Geen activiteiten gevonden in de remote-attributen.",
+    selectEntityError: "Selecteer een Sofabaton-entiteit voor afstandsbediening",
+    remoteUnavailable: "De afstandsbediening is niet beschikbaar (mogelijk omdat de Sofabaton-app verbonden is).",
+    noActivitiesWarning: "Geen activiteiten gevonden in de attributen van de afstandsbediening.",
     noMacros: "Geen macro's beschikbaar",
     noFavorites: "Geen favorieten beschikbaar",
     noCommands: "Geen commando's beschikbaar",
@@ -10001,7 +10640,7 @@ var REMOTE_CARD_STRINGS_NL = {
   },
   editor: {
     fieldLabels: {
-      entity: "Selecteer een Sofabaton remote-entiteit",
+      entity: "Selecteer een Sofabaton-entiteit voor afstandsbediening",
       theme: "Pas een thema toe op de kaart",
       use_background_override: "Achtergrondkleur aanpassen",
       background_override: "Kies een achtergrondkleur",
@@ -10047,6 +10686,8 @@ var REMOTE_CARD_STRINGS_NL = {
     openOnCurrentActivity: "Huidige activiteit",
     macrosFavoritesAsRows: "Macro's/favorieten als rijen",
     commandsAsRows: "Commando's als rijen",
+    favoriteDeviceNames: "Apparaatnamen tonen",
+    rowOptions: (groupLabel2) => `Opties voor ${groupLabel2}`,
     visibleRows: "Zichtbare rijen",
     moveGroupUp: (groupLabel2) => `Verplaats ${groupLabel2} omhoog`,
     moveGroupDown: (groupLabel2) => `Verplaats ${groupLabel2} omlaag`,
@@ -10056,6 +10697,7 @@ var REMOTE_CARD_STRINGS_NL = {
     channel: "Kanaal",
     mediaControls: "Afspelen",
     dvr: "DVR",
+    numpad: "Cijfertoetsen",
     resetDefaultLayout: "Indeling resetten",
     shortcutSlotLeft: "Linker snelkoppeling",
     shortcutSlotMiddle: "Middelste snelkoppeling",
@@ -10114,17 +10756,29 @@ var REMOTE_CARD_STRINGS_NL = {
     blue: "Blauw",
     a: "A",
     b: "B",
-    c: "C"
+    c: "C",
+    num0: "0",
+    num1: "1",
+    num2: "2",
+    num3: "3",
+    num4: "4",
+    num5: "5",
+    num6: "6",
+    num7: "7",
+    num8: "8",
+    num9: "9",
+    numdash: "-",
+    numenter: "Enter"
   }
 };
 registerRemoteCardTranslation("nl", REMOTE_CARD_STRINGS_NL);
 
-// custom_components/sofabaton_x1s/www/src/remote-card-translations/zh-hans.ts
+// remote-card/src/remote-card-translations/zh-hans.ts
 var REMOTE_CARD_STRINGS_ZH_HANS = {
   card: {
-    selectEntityError: "\u8BF7\u9009\u62E9 Sofabaton \u9065\u63A7\u5668\u5B9E\u4F53",
-    remoteUnavailable: "\u9065\u63A7\u5668\u4E0D\u53EF\u7528\uFF08\u53EF\u80FD\u662F\u56E0\u4E3A Sofabaton \u5E94\u7528\u5DF2\u8FDE\u63A5\uFF09\u3002",
-    noActivitiesWarning: "\u5728\u9065\u63A7\u5668\u5C5E\u6027\u4E2D\u672A\u627E\u5230\u6D3B\u52A8\u3002",
+    selectEntityError: "\u8BF7\u9009\u62E9 Sofabaton \u9065\u63A7\u5B9E\u4F53",
+    remoteUnavailable: "\u9065\u63A7\u4E0D\u53EF\u7528\uFF08\u53EF\u80FD\u662F\u56E0\u4E3A Sofabaton \u5E94\u7528\u5DF2\u8FDE\u63A5\uFF09\u3002",
+    noActivitiesWarning: "\u5728\u9065\u63A7\u5C5E\u6027\u4E2D\u672A\u627E\u5230\u6D3B\u52A8\u3002",
     noMacros: "\u6CA1\u6709\u53EF\u7528\u7684\u5B8F",
     noFavorites: "\u6CA1\u6709\u53EF\u7528\u7684\u6536\u85CF",
     noCommands: "\u6CA1\u6709\u53EF\u7528\u547D\u4EE4",
@@ -10195,7 +10849,7 @@ var REMOTE_CARD_STRINGS_ZH_HANS = {
   },
   editor: {
     fieldLabels: {
-      entity: "\u9009\u62E9 Sofabaton \u9065\u63A7\u5668\u5B9E\u4F53",
+      entity: "\u9009\u62E9 Sofabaton \u9065\u63A7\u5B9E\u4F53",
       theme: "\u4E3A\u5361\u7247\u5E94\u7528\u4E3B\u9898",
       use_background_override: "\u81EA\u5B9A\u4E49\u80CC\u666F\u989C\u8272",
       background_override: "\u9009\u62E9\u80CC\u666F\u989C\u8272",
@@ -10233,7 +10887,7 @@ var REMOTE_CARD_STRINGS_ZH_HANS = {
     modeToggle: "\u6A21\u5F0F\u5207\u6362",
     deviceModeDescription: "\u63A7\u5236 Hub \u4E2D\u914D\u7F6E\u7684\u5355\u4E2A\u8BBE\u5907\uFF0C\u5E76\u4F7F\u7528\u8BE5\u8BBE\u5907\u81EA\u5DF1\u7684\u6309\u952E\u5206\u914D\u548C\u5B8C\u6574\u547D\u4EE4\u5217\u8868\u3002",
     longPress: "\u542F\u7528\u957F\u6309\u91CD\u590D\u53D1\u9001",
-    longPressDescription: "\u6309\u4F4F\u6240\u9009\u6309\u952E\u53EF\u91CD\u590D\u53D1\u9001\u5176\u547D\u4EE4\uFF0C\u5C31\u50CF\u4F7F\u7528\u5B9E\u4F53\u9065\u63A7\u5668\u4E00\u6837\u3002",
+    longPressDescription: "\u6309\u4F4F\u6240\u9009\u6309\u952E\u53EF\u91CD\u590D\u53D1\u9001\u5176\u547D\u4EE4\uFF0C\u5C31\u50CF\u4F7F\u7528\u7269\u7406\u9065\u63A7\u5668\u4E00\u6837\u3002",
     longPressButtons: "\u6309\u952E",
     enableDeviceMode: "\u542F\u7528\u8BBE\u5907\u6A21\u5F0F",
     initialView: "\u521D\u59CB\u89C6\u56FE",
@@ -10241,6 +10895,8 @@ var REMOTE_CARD_STRINGS_ZH_HANS = {
     openOnCurrentActivity: "\u5F53\u524D\u6D3B\u52A8",
     macrosFavoritesAsRows: "\u5C06\u5B8F/\u6536\u85CF\u663E\u793A\u4E3A\u884C",
     commandsAsRows: "\u5C06\u547D\u4EE4\u663E\u793A\u4E3A\u884C",
+    favoriteDeviceNames: "\u663E\u793A\u8BBE\u5907\u540D\u79F0",
+    rowOptions: (groupLabel2) => `${groupLabel2}\u9009\u9879`,
     visibleRows: "\u53EF\u89C1\u884C",
     moveGroupUp: (groupLabel2) => `\u5C06${groupLabel2}\u4E0A\u79FB`,
     moveGroupDown: (groupLabel2) => `\u5C06${groupLabel2}\u4E0B\u79FB`,
@@ -10250,6 +10906,7 @@ var REMOTE_CARD_STRINGS_ZH_HANS = {
     channel: "\u9891\u9053",
     mediaControls: "\u64AD\u653E",
     dvr: "DVR",
+    numpad: "\u6570\u5B57\u952E\u76D8",
     resetDefaultLayout: "\u91CD\u7F6E\u5E03\u5C40",
     shortcutSlotLeft: "\u5DE6\u4FA7\u5FEB\u6377\u6309\u952E",
     shortcutSlotMiddle: "\u4E2D\u95F4\u5FEB\u6377\u6309\u952E",
@@ -10308,12 +10965,24 @@ var REMOTE_CARD_STRINGS_ZH_HANS = {
     blue: "\u84DD",
     a: "A",
     b: "B",
-    c: "C"
+    c: "C",
+    num0: "0",
+    num1: "1",
+    num2: "2",
+    num3: "3",
+    num4: "4",
+    num5: "5",
+    num6: "6",
+    num7: "7",
+    num8: "8",
+    num9: "9",
+    numdash: "-",
+    numenter: "\u786E\u5B9A"
   }
 };
 registerRemoteCardTranslation("zh-hans", REMOTE_CARD_STRINGS_ZH_HANS);
 
-// custom_components/sofabaton_x1s/www/src/remote-card.ts
+// remote-card/src/remote-card.ts
 var win = window;
 logPillsOnce();
 if (!customElements.get(EDITOR))
