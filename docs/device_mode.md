@@ -3,7 +3,7 @@
 Device mode turns the Virtual Remote into a remote for one device configured on your hub. Instead of showing an Activity's controls, it uses the selected device's own button assignments and gives you access to every command stored for that device.
 
 > [!IMPORTANT]
-> This page describes Device mode in card version 0.2.2. It requires the [Sofabaton X integration](https://github.com/m3tac0de/home-assistant-sofabaton-x1s) version 0.6.7 or newer with **Persistent Cache** enabled. Device mode is not available with the Official Sofabaton Hub integration.
+> This page describes Device mode in card version 0.2.4, bundled with Sofabaton X 0.6.9. Device mode requires the [Sofabaton X integration](https://github.com/m3tac0de/home-assistant-sofabaton-x1s) version 0.6.7 or newer with **Persistent Cache** enabled. Device mode is not available with the Official Sofabaton Hub integration.
 
 ## What Device mode provides
 
@@ -12,7 +12,6 @@ Device mode turns the Virtual Remote into a remote for one device configured on 
 - **Per-device shortcuts:** place up to three frequently used commands in a dedicated Shortcuts row and give each one its own icon.
 - **Device power control:** when power behavior is configured on the hub, the card can show a Power button that sends the appropriate Power On or Power Off command.
 - **Per-device layouts:** start with one default Device layout, then adjust the visible controls and their order for individual devices.
-- **Configured long-press assignments:** holding a supported button for 500 ms follows the long-press command configured on the hub.
 
 ## Configure Device mode in the visual editor
 
@@ -22,7 +21,7 @@ The visual editor is the recommended way to configure the Virtual Remote. It exp
 
 1. In the **Sofabaton Control Panel**, open **Settings** and enable **Persistent Cache**.
 2. Add or edit the **Sofabaton Virtual Remote** card and select its remote entity.
-3. Open **General Options** and turn on **Enable device mode**. Optionally use **Initial view** to start on a specific device.
+3. Open **General Options** and check that **Enable device mode** is on (the default). Optionally use **Initial view** to start on a specific device.
 
 The Activity/Device button beside the selector is now available on the card. Use it to switch between Activity mode and Device mode.
 
@@ -84,6 +83,44 @@ Configured hub long-press is separate from the card's optional hold-to-repeat fe
 - **Power is missing:** confirm that power behavior is configured for the device on the hub, then refresh the cache.
 - **A shortcut is disabled:** its saved command is no longer available. Edit that device's Shortcuts row and select a current command or reset the slot.
 - **A button is disabled:** the selected device has no command assigned to that physical button. Use **Commands** to access unassigned commands.
+- **Number pad is missing:** use card 0.2.4 or newer on an X2, enable **Number pad** in the selected Device layout, and check that the device has at least one numeric key assigned. Refresh the cache after changing assignments, then reload the dashboard.
+
+## Configuration reference
+
+The following fields belong inside `device_mode`:
+
+| Field | Type | Description | Default |
+| --- | --- | --- | --- |
+| `enabled` | boolean | Allow Device mode when the integration and cache support it. `false` removes all Device mode controls. | `true` |
+| `open_device` | number / null | Device ID to select when the card loads. Ignored if Device mode is unavailable. | `null` (current Activity) |
+| `layouts` | object | `default` holds shared Device settings; a device ID such as `"12"` holds that device's overrides. | `{}` |
+| `shortcuts` | object | Per-device shortcut slots; see below. | `{}` |
+
+Each entry in `device_mode.layouts` supports these fields. The resolution order is built-in defaults, `device_mode.layouts.default`, then the selected device's overrides. Activity layouts and top-level layout switches do not participate.
+
+| Field | Type | Description | Default |
+| --- | --- | --- | --- |
+| `show_activity` | boolean | Show the Device selector row, including its mode switch. The stored key keeps its Activity-mode name. | `true` |
+| `show_device_toggle` | boolean | Show the Activity/Device switch in the selector row. Does not disable Device mode. | `true` |
+| `show_dpad` | boolean | Show the Direction Pad. | `true` |
+| `show_numpad` | boolean | Allow the X2 keypad when at least one numeric key is assigned. Independent of `show_dpad`. | `true` |
+| `show_nav` | boolean | Show Back, Home, and Menu. | `true` |
+| `show_volume` | boolean | Show Volume Up/Down and Mute. | `true` |
+| `show_channel` | boolean | Show Channel controls. | `true` |
+| `show_media` | boolean | Show playback controls. | `true` |
+| `show_dvr` | boolean | Show X2 DVR, Pause, and Exit controls. | `true` |
+| `show_colors` | boolean | Show Red, Green, Yellow, and Blue. | `true` |
+| `show_abc` | boolean | Show X2 A/B/C. | `true` |
+| `show_commands_button` | boolean | Show Commands, as a drawer button or inline row. | `true` |
+| `show_power_button` | boolean | Show Power when the device has power behavior configured. Shares the Commands group's position. | `true` |
+| `show_shortcuts` | boolean | Show the Shortcuts row when the selected device has at least one configured slot. | `true` |
+| `c_as_rows` | boolean | Show Commands inline instead of in a drawer. | `false` |
+| `c_row_visible_rows` | number | Visible command-button rows before scrolling, from 1 to 6; applies when `c_as_rows` is `true`. | `2` |
+| `group_order` | list | Uses the [shared group names and default order](../README.md#activity-layout-options). `macro_favorites` positions the Commands/Power row in drawer mode; `macros_row` positions inline Commands with Power. `shortcuts` positions the Shortcuts row. Omitted groups are appended. | Shared default order |
+
+Use `c_as_rows`, `c_row_visible_rows`, and `show_commands_button` for Device layouts, rather than the Activity-only `mf_*` and Macros/Favorites switches. `show_mid` and `show_favorite_device_names` are also Activity-only. Card-wide theme and sizing settings still apply in both modes.
+
+For `device_mode.shortcuts`, use a device ID as the key and any of `left`, `middle`, and `right` as slots. Each slot requires a string `icon` (for example `mdi:netflix`) and a numeric `command_id` from that device. There is no `default` shortcut assignment; slots are strictly per device.
 
 ## Advanced: YAML configuration
 
@@ -110,8 +147,11 @@ device_mode:
       c_row_visible_rows: 3
       show_power_button: true
       show_shortcuts: true
+      show_device_toggle: true
+      show_numpad: true
     "12":
       show_colors: false
+      show_dpad: false # On X2, show the assigned number pad on its own
 ```
 
 - `enabled` controls Device mode and defaults to `true`.

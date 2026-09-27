@@ -3,7 +3,7 @@
 # Sofabaton Virtual Remote for Home Assistant
 
 [![HACS Badge](https://img.shields.io/badge/HACS-Default-green.svg)](https://github.com/hacs/integration)
-![Version](https://img.shields.io/badge/version-0.2.2-blue)
+![Version](https://img.shields.io/badge/version-0.2.4-blue)
 
 A highly customizable virtual remote for your lovelace dashboard. It works with the **Sofabaton X1, X1S, and X2** remotes.
 
@@ -43,7 +43,15 @@ Activity mode, card styling, and hold-to-repeat work with both integrations. Dev
 
 ## 🚀 Installation
 
-### Via HACS (Recommended)
+### Included with Sofabaton X
+
+The **Sofabaton X** integration includes and registers the card automatically, there is no need to install it separately. You can add it from the dashboard card picker without installing a separate frontend plugin.
+
+If you install the card separately through HACS, the integration stops registering its bundled copy after the next Home Assistant restart. Update the HACS card separately to receive new card features; updating the integration alone does not update that copy.
+
+Users of the **Official Sofabaton Hub** integration need the separate card installation below.
+
+### Separate installation via HACS
 
 1. Open **HACS** in Home Assistant.
 2. Search for "Sofabaton Virtual Remote" and click **Download**.
@@ -72,36 +80,80 @@ type: custom:sofabaton-virtual-remote
 entity: remote.x2_hub # the remote entity added by the Sofabaton integration.
 ```
 
-Here is the full list of options:
+### Card-wide options
 
-| Key                      | Type         | Description                                                                                                                                                                                                                                                                                                                                                       | Default                                                                                               |
-| :----------------------- | :----------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :---------------------------------------------------------------------------------------------------- |
-| `entity`                 | string       | The `remote.` entity of your Sofabaton device.                                                                                                                                                                                                                                                                                                                    | **Required**                                                                                          |
-| `max_width`              | number       | Limits how wide the remote grows.                                                                                                                                                                                                                                                                                                                                 | `360`                                                                                                 |
-| `key_style`              | string       | Button surface style: `flat`, `tinted`, `elevated`, or `glossy`.                                                                                                                                                                                                                                                                                                  | `flat`                                                                                                |
-| `tinted_panels`          | boolean      | Add an accent-tinted background behind each button group. Can be combined with any `key_style`.                                                                                                                                                                                                                                                                   | `false`                                                                                               |
-| `show_automation_assist` | boolean      | Enable or disable **Key capture** in General Options.                                                                                                                                                                                                                                                                                                             | `false`                                                                                               |
-| `hold_repeat`            | map / object | Hold-to-repeat settings: `enabled` turns the feature on. `volume`, `channel`, and `dpad` each default to `true` when enabled; set one to `false` to exclude that group. Holding a selected button sends its command after 400 ms and repeats it every 250 ms until released. Only these three button groups support hold-to-repeat. Works with both integrations. | `{}`                                                                                                  |
-| `show_activity`          | boolean      | Show/hide the activity selector.                                                                                                                                                                                                                                                                                                                                  | `true`                                                                                                |
-| `show_dpad`              | boolean      | Show/hide the Direction Pad.                                                                                                                                                                                                                                                                                                                                      | `true`                                                                                                |
-| `show_nav`               | boolean      | Show/hide the Back, Home, and Menu buttons.                                                                                                                                                                                                                                                                                                                       | `true`                                                                                                |
-| `show_volume`            | boolean      | Show/hide Volume controls.                                                                                                                                                                                                                                                                                                                                        | `true`                                                                                                |
-| `show_channel`           | boolean      | Show/hide Channel controls.                                                                                                                                                                                                                                                                                                                                       | `true`                                                                                                |
-| `show_mid`               | boolean      | Legacy combined switch for the Volume and Channel controls, used only when `show_volume` / `show_channel` are not set. Prefer those instead.                                                                                                                                                                                                                      | `true`                                                                                                |
-| `show_media`             | boolean      | Show/hide Play/Pause, Rew, Fwd buttons.                                                                                                                                                                                                                                                                                                                           | `true`                                                                                                |
-| `show_dvr`               | boolean      | Show/hide the X2 DVR, Pause, Exit buttons.                                                                                                                                                                                                                                                                                                                        | `true`                                                                                                |
-| `show_colors`            | boolean      | Show/hide Red, Green, Yellow, Blue buttons.                                                                                                                                                                                                                                                                                                                       | `true`                                                                                                |
-| `show_abc`               | boolean      | Show/hide the X2 A/B/C buttons.                                                                                                                                                                                                                                                                                                                                   | `true`                                                                                                |
-| `show_macros_button`     | boolean      | Toggle the Macros drawer button.                                                                                                                                                                                                                                                                                                                                  | `true`                                                                                                |
-| `show_favorites_button`  | boolean      | Toggle the Favorites drawer button.                                                                                                                                                                                                                                                                                                                               | `true`                                                                                                |
-| `mf_as_rows`             | boolean      | When `true`, Macros and Favorites render as their own scrollable rows in the card instead of drawer buttons. Each becomes an independently-orderable row (`macros_row / favorites_row`) and the combined `macro_favorites` row is hidden.                                                                                                                         | `false`                                                                                               |
-| `mf_row_visible_rows`    | number       | Number of button rows visible in each inline Macros / Favorites row before the row becomes scrollable. Shared by both rows. Range 1–6. Only effective when `mf_as_rows`: `true`.                                                                                                                                                                                  | `2`                                                                                                   |
-| `custom_favorites`       | list         | List of custom buttons for the drawer.                                                                                                                                                                                                                                                                                                                            | `[]`                                                                                                  |
-| `theme`                  | string       | Set a specific theme for this card.                                                                                                                                                                                                                                                                                                                               | `""`                                                                                                  |
-| `background_override`    | list/object  | Override the card background (e.g., [33, 33, 33]).                                                                                                                                                                                                                                                                                                                | `null`                                                                                                |
-| `group_order`            | list         | Change the order of the button groups. Valid entries: `activity, macro_favorites, macros_row, favorites_row, dpad, nav, mid, media, colors, abc, shortcuts`. `shortcuts` is Device-mode-only. `macros_row / favorites_row` are only rendered when `mf_as_rows`: `true`; `macro_favorites` is only rendered when `mf_as_rows`: `false`.                            | `activity, macro_favorites, macros_row, favorites_row, dpad, nav, mid, media, colors, abc, shortcuts` |
-| `layouts`                | map / object | Layout Options per Activity. Use key `default` for the layout shared by all Activities, and an Activity id for a single Activity's override. All layout keys above (including `mf_as_rows, mf_row_visible_rows, show_macros_button, show_favorites_button, group_order`, etc.) can be set per entry.                                                              | `{}`                                                                                                  |
-| `device_mode`            | map / object | Device mode settings _(Sofabaton X integration only)_: `enabled`, `open_device`, per-device `layouts`, and per-device `shortcuts`. See [`docs/device_mode.md`](docs/device_mode.md).                                                                                                                                                                              | `{}`                                                                                                  |
+These settings belong at the top level of the card configuration and apply in both Activity and Device modes. Layout visibility and ordering are listed separately below.
+
+| Key | Type | Description | Default |
+| --- | --- | --- | --- |
+| `type` | string | Lovelace card type. | Required: `custom:sofabaton-virtual-remote` |
+| `entity` | string | The `remote.` entity supplied by your Sofabaton integration. | Required |
+| `max_width` | number / string / null | Maximum width: a number in pixels, or a CSS length such as `"100%"`. Use `0`, `null`, or `""` for no card-specific limit. The visual editor offers 230–1200 px; YAML also accepts the other forms. | `360` |
+| `key_style` | string | Button style: `flat`, `tinted`, `elevated`, or `glossy`. Legacy `panel` is treated as flat buttons with tinted panels. | `flat` |
+| `tinted_panels` | boolean | Accent-tinted backgrounds behind button groups; combines with any button style. | `false` |
+| `theme` | string | Home Assistant theme for this card; empty follows the dashboard theme. | `""` |
+| `background_override` | RGB list / object / null | Card background, for example `[33, 33, 33]` or `{r: 33, g: 33, b: 33}`. `null` uses the theme. The editor's background switch manages this value; `use_background_override` is not a saved setting. | `null` |
+| `show_automation_assist` | boolean | Enable **General Options → Key capture**. | `false` |
+| `hold_repeat` | object | Hold-to-repeat settings; see the table below. | `{}` |
+| `layouts` | object | Activity layout defaults and per-Activity overrides; see below. | `{}` |
+| `device_mode` | object | Device mode enablement, initial device, layouts, and shortcuts. Sofabaton X only; see the [complete Device mode reference](docs/device_mode.md#configuration-reference). | Enabled when available |
+
+`hold_repeat` has these fields:
+
+| Field | Type | Description | Default |
+| --- | --- | --- | --- |
+| `enabled` | boolean | Enable repeated commands while holding selected controls. The first hold command fires after 400 ms, then every 250 ms until release. | `false` |
+| `volume` | boolean | Repeat Volume Up/Down; Mute does not repeat. | `true` when enabled |
+| `channel` | boolean | Repeat Channel Up/Down. | `true` when enabled |
+| `dpad` | boolean | Repeat Up/Down/Left/Right; OK does not repeat. | `true` when enabled |
+
+These are the only groups that support hold-to-repeat. It works with both integrations. Configured hub long-press assignments are a separate feature; see [Long-press support](#long-press-support).
+
+### Activity layout options
+
+Put shared layout settings in `layouts.default`, and overrides in `layouts["<activity id>"]`. Top-level layout keys remain supported: the order of precedence is built-in defaults, top-level layout keys, `layouts.default`, then the selected Activity's overrides. The visual editor saves shared settings under `layouts.default`.
+
+Device layouts are independent and use `device_mode.layouts`; they do not inherit Activity layout settings. Styling, sizing, and other card-wide settings cannot be overridden per layout.
+
+| Key | Type | Description | Default |
+| --- | --- | --- | --- |
+| `show_activity` | boolean | Show the Activity selector row. Hiding it also hides the mode switch in that row. | `true` |
+| `show_device_toggle` | boolean | Show the Activity/Device mode switch when Device mode is available. Hiding the switch does not disable Device mode; use `device_mode.enabled` for that. | `true` |
+| `show_dpad` | boolean | Show the Direction Pad. An available number pad can remain visible with this off. | `true` |
+| `show_numpad` | boolean | Allow the X2 number pad when at least one numeric key is assigned. Sofabaton X only; see [Number pad](#number-pad-x2). | `true` |
+| `show_nav` | boolean | Show Back, Home, and Menu. | `true` |
+| `show_volume` | boolean | Show Volume Up/Down and Mute. | `true` |
+| `show_channel` | boolean | Show Channel controls. | `true` |
+| `show_mid` | boolean | Legacy fallback for Volume and Channel when their individual switches are absent. Prefer `show_volume` and `show_channel`. | `true` |
+| `show_media` | boolean | Show the playback controls (Rewind, Play/Pause, Fast Forward). | `true` |
+| `show_dvr` | boolean | Show the X2 DVR, Pause, and Exit controls. | `true` |
+| `show_colors` | boolean | Show Red, Green, Yellow, and Blue. | `true` |
+| `show_abc` | boolean | Show the X2 A/B/C buttons. | `true` |
+| `show_macros_button` | boolean | Show Macros, either as a drawer button or an inline row. | `true` |
+| `show_favorites_button` | boolean | Show Favorites, either as a drawer button or an inline row. | `true` |
+| `show_favorite_device_names` | boolean | Label Favorites with their device names. Requires Sofabaton X and Persistent Cache; see [Device names on Favorites](#device-names-on-favorites). | `false` |
+| `mf_as_rows` | boolean | Show Macros and Favorites as separate scrollable rows instead of drawers. | `false` |
+| `mf_row_visible_rows` | number | Visible button rows in each inline Macros/Favorites group before scrolling, from 1 to 6. Applies when `mf_as_rows` is `true`. | `2` |
+| `group_order` | list | Order the groups using the names below. Omitted groups are appended in default order; use visibility switches to hide them. | Order below |
+
+Default `group_order`:
+
+```yaml
+group_order:
+  - activity
+  - macro_favorites
+  - macros_row
+  - favorites_row
+  - dpad
+  - nav
+  - mid
+  - media
+  - colors
+  - abc
+  - shortcuts
+```
+
+`macros_row` and `favorites_row` render only with `mf_as_rows: true`; `macro_favorites` renders in drawer mode. `shortcuts` is used only in Device mode. Volume and Channel share `mid`; playback and DVR controls share `media`. The number pad shares `dpad` and has no separate group name.
 
 Per-activity layout example: hide the color buttons everywhere, but in Activity 101 also hide the activity selector and reorder the groups:
 
@@ -123,7 +175,6 @@ layouts:
       - abc
       - macro_favorites
 ```
-
 ### Long-press support
 
 Long-press support is separate from `hold-to-repeat` and requires no card setting. With the Sofabaton X integration 0.6.7 or newer and Persistent Cache enabled, the card automatically follows long-press assignments configured on the hub in both Activity and Device modes.
@@ -136,7 +187,7 @@ A short tap sends the normal command. Holding an assigned button for 500 ms send
 
 _(Sofabaton X integration only)_
 
-Device mode lets the remote control one device configured on the hub. The card uses that device's button bindings and adds a searchable drawer containing its complete command list. Version 0.2.2 also adds up to three per-device shortcut buttons and a Power button for devices with power control configured. It works independently of Activities, so you can reach any command on any device even when no Activity is running. This is useful for occasional commands that are not part of an Activity or for building a dedicated per-device remote.
+Device mode lets the remote control one device configured on the hub. The card uses that device's button bindings and adds a searchable drawer containing its complete command list. It also provides up to three per-device shortcut buttons and a Power button for devices with power control configured. It works independently of Activities, so you can reach any command on any device even when no Activity is running. This is useful for occasional commands that are not part of an Activity or for building a dedicated per-device remote.
 
 It requires the Sofabaton X integration with persistent caching enabled; the card hides all Device mode functionality when it is not available. Full documentation, including the `device_mode` configuration block and per-device layouts: [`docs/device_mode.md`](docs/device_mode.md).
 
