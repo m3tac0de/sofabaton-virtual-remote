@@ -3,7 +3,7 @@
 # Sofabaton Virtual Remote for Home Assistant
 
 [![HACS Badge](https://img.shields.io/badge/HACS-Default-green.svg)](https://github.com/hacs/integration)
-![Version](https://img.shields.io/badge/version-0.2.4-blue)
+![Version](https://img.shields.io/badge/version-0.2.5-blue)
 
 A highly customizable virtual remote for your lovelace dashboard. It works with the **Sofabaton X1, X1S, and X2** remotes.
 
@@ -20,7 +20,7 @@ You will need to have that integration installed and working, before you can use
 - **[X1, X1S, X2]** Install and configure the **Sofabaton X** integration via [`HACS`](https://my.home-assistant.io/redirect/hacs_repository/?owner=m3tac0de&repository=home-assistant-sofabaton-x1s&category=integration) or [`Github`](https://github.com/m3tac0de/home-assistant-sofabaton-x1s).
 - **[X2]** Install and configure the **Official Sofabaton Hub** integration via [`HACS`](https://my.home-assistant.io/redirect/hacs_repository/?owner=yomonpet&repository=ha-sofabaton-hub&category=integration) or [`Github`](https://github.com/yomonpet/ha-sofabaton-hub).
 
-Activity mode, card styling, and hold-to-repeat work with both integrations. Device mode, per-device shortcuts, device power control, and configured hub long-press assignments require the **Sofabaton X integration 0.6.7 or newer** with **Persistent Cache** enabled.
+Activity mode (including the X2 number pad), card styling, and hold-to-repeat work with both integrations. Device mode, per-device shortcuts, device power control, and configured hub long-press assignments require the **Sofabaton X integration 0.6.7 or newer** with **Persistent Cache** enabled.
 
 ## ✨ Features
 
@@ -120,7 +120,7 @@ Device layouts are independent and use `device_mode.layouts`; they do not inheri
 | `show_activity` | boolean | Show the Activity selector row. Hiding it also hides the mode switch in that row. | `true` |
 | `show_device_toggle` | boolean | Show the Activity/Device mode switch when Device mode is available. Hiding the switch does not disable Device mode; use `device_mode.enabled` for that. | `true` |
 | `show_dpad` | boolean | Show the Direction Pad. An available number pad can remain visible with this off. | `true` |
-| `show_numpad` | boolean | Allow the X2 number pad when at least one numeric key is assigned. Sofabaton X only; see [Number pad](#number-pad-x2). | `true` |
+| `show_numpad` | boolean | Allow the X2 number pad when at least one numeric key is assigned. Open it with the dialpad button in the Direction Pad's corner. | `true` |
 | `show_nav` | boolean | Show Back, Home, and Menu. | `true` |
 | `show_volume` | boolean | Show Volume Up/Down and Mute. | `true` |
 | `show_channel` | boolean | Show Channel controls. | `true` |

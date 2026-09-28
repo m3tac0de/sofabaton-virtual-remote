@@ -5,7 +5,7 @@ When enabled, Key capture records button presses and Activity changes on your vi
 - your dashboard (a Lovelace button that triggers the same command)
 - a script / automation action (a ready-to-use service call)
 
-The X2 number pad is included: with card 0.2.4 and Sofabaton X, open it using the dialpad button in the Direction Pad's corner, then capture an assigned digit, **-**, or **E** (Enter) just like another button.
+The X2 number pad is included (card 0.2.4 with Sofabaton X, card 0.2.5 with the Official Sofabaton Hub integration): open it using the dialpad button in the Direction Pad's corner, then capture an assigned digit, **-**, or **E** (Enter) just like another button.
 
 With Sofabaton X, generated button-action YAML uses numeric `command` and `device` IDs. It does not substitute names such as `NUM_1`. Named buttons are also supported when you write your own action for the current Activity; see the [integration's remote entity guide](https://github.com/m3tac0de/home-assistant-sofabaton-x1s/blob/main/docs/remote_entity.md). Activity changes generate their own start/stop actions. Custom favorites are not captured.
 
